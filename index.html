@@ -1,0 +1,4109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Robot Welding Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a2342 0%, #1a3a5c 100%);
+      color: #fff;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #4b3b6a 0%, #5d4e75 100%);
+      padding: 10px 15px;
+      font-weight: bold;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 200px;
+    }
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .header-controls select {
+      background: #2a4a6b;
+      color: #fff;
+      border: 1px solid #4a6a8b;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      min-width: 80px;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4CAF50;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+    }
+    nav {
+      width: 100%;
+      background: linear-gradient(180deg, #173c5e 0%, #1a4066 100%);
+      padding: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      order: 2;
+    }
+    .mobile-nav-toggle {
+      display: block;
+      background: #ffa500;
+      color: #000;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .nav-content {
+      display: none;
+    }
+    .nav-content.active {
+      display: block;
+    }
+    
+    @media (min-width: 768px) {
+      header {
+        padding: 15px 25px;
+        font-size: 24px;
+      }
+      .header-controls select {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      .status-indicator {
+        font-size: 14px;
+      }
+      .status-dot {
+        width: 12px;
+        height: 12px;
+      }
+      .container {
+        flex-direction: row;
+      }
+      nav {
+        width: 250px;
+        min-height: calc(100vh - 70px);
+        order: 0;
+      }
+      .mobile-nav-toggle {
+        display: none;
+      }
+      .nav-content {
+        display: block !important;
+      }
+    }
+    nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    nav ul li {
+      margin: 15px 0;
+    }
+    nav ul li a {
+      color: #e0e6ed;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 10px 15px;
+      border-radius: 6px;
+      display: block;
+      transition: all 0.3s ease;
+    }
+    nav ul li a:hover, nav ul li a.active {
+      background: rgba(255, 165, 0, 0.2);
+      color: #ffa500;
+      transform: translateX(5px);
+    }
+    nav ul ul {
+      margin-left: 20px;
+      margin-top: 10px;
+    }
+    nav ul ul li a {
+      font-size: 14px;
+      padding: 8px 12px;
+    }
+    main {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      order: 1;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .metric-card {
+      background: linear-gradient(135deg, #1e4a6f 0%, #2a5a8a 100%);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .metric-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffa500;
+      margin-bottom: 5px;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: #b0c4de;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      line-height: 1.2;
+    }
+    .metric-change {
+      font-size: 10px;
+      margin-top: 6px;
+    }
+    
+    @media (min-width: 768px) {
+      main {
+        padding: 25px;
+      }
+      .metrics-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+      }
+      .metric-card {
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .metric-value {
+        font-size: 32px;
+      }
+      .metric-label {
+        font-size: 14px;
+      }
+      .metric-change {
+        font-size: 12px;
+        margin-top: 8px;
+      }
+    }
+    .metric-change.positive {
+      color: #4CAF50;
+    }
+    .metric-change.negative {
+      color: #f44336;
+    }
+    .card {
+      background: linear-gradient(135deg, #112b4a 0%, #1a3a5c 100%);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card h2 {
+      color: #ffa500;
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 10px;
+    }
+    
+    .two-column-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    @media (min-width: 768px) {
+      .card {
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 25px;
+      }
+      .card h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+        gap: 10px;
+      }
+      .chart-container {
+        height: 350px;
+        margin-top: 15px;
+      }
+      .two-column-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+    }
+    canvas {
+      border-radius: 8px;
+    }
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+    .error-list {
+      background: #2a1810;
+      border-left: 4px solid #f44336;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+    .error-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .error-item:last-child {
+      border-bottom: none;
+    }
+    .error-time {
+      color: #f44336;
+      font-weight: bold;
+    }
+    .error-desc {
+      flex: 1;
+      margin-left: 15px;
+    }
+    .countermeasure-item {
+      background: rgba(255,255,255,0.05);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #ffa500;
+    }
+    .progress-bar {
+      background: rgba(255,255,255,0.1);
+      height: 8px;
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: linear-gradient(90deg, #4CAF50, #8BC34A);
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    
+    /* Advanced styling for new components */
+    .robot-status {
+      background: rgba(255,255,255,0.05);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .robot-status h4 {
+      color: #ffa500;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    
+    .status-grid {
+      display: grid;
+      gap: 8px;
+    }
+    
+    .status-grid div {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .health-scores {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .health-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .health-bar {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .health-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    
+    .ai-insights {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .insight-item {
+      display: flex;
+      gap: 15px;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid;
+    }
+    
+    .insight-item.high-priority {
+      background: rgba(244, 67, 54, 0.1);
+      border-left-color: #f44336;
+    }
+    
+    .insight-item.medium-priority {
+      background: rgba(255, 165, 0, 0.1);
+      border-left-color: #ffa500;
+    }
+    
+    .insight-item.low-priority {
+      background: rgba(76, 175, 80, 0.1);
+      border-left-color: #4CAF50;
+    }
+    
+    .insight-item i {
+      font-size: 20px;
+      margin-top: 5px;
+    }
+    
+    .insight-item h4 {
+      margin: 0 0 8px 0;
+      color: #fff;
+    }
+    
+    .insight-item p {
+      margin: 0 0 8px 0;
+      color: #b0c4de;
+    }
+    
+    .insight-item small {
+      color: #888;
+    }
+    
+    .quality-checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+    }
+    
+    .checklist-item.completed i {
+      color: #4CAF50;
+    }
+    
+    .checklist-item.pending i {
+      color: #ffa500;
+    }
+    
+    .checklist-item .timestamp {
+      margin-left: auto;
+      color: #888;
+      font-size: 12px;
+    }
+    
+    .maintenance-calendar {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .maintenance-item {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 15px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      border-left: 4px solid;
+    }
+    
+    .maintenance-item.urgent {
+      border-left-color: #f44336;
+    }
+    
+    .maintenance-item.scheduled {
+      border-left-color: #ffa500;
+    }
+    
+    .maintenance-item.completed {
+      border-left-color: #4CAF50;
+    }
+    
+    .maintenance-date {
+      text-align: center;
+      min-width: 60px;
+    }
+    
+    .maintenance-date .day {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffa500;
+    }
+    
+    .maintenance-date .month {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .maintenance-details {
+      flex: 1;
+    }
+    
+    .maintenance-details h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+    }
+    
+    .maintenance-details p {
+      margin: 0 0 8px 0;
+      color: #b0c4de;
+      font-size: 14px;
+    }
+    
+    .maintenance-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .maintenance-status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .maintenance-status.urgent {
+      background: #f44336;
+      color: #fff;
+    }
+    
+    .maintenance-status.scheduled {
+      background: #ffa500;
+      color: #fff;
+    }
+    
+    .maintenance-status.completed {
+      background: #4CAF50;
+      color: #fff;
+    }
+    
+    .component-lifecycle {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .lifecycle-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .lifecycle-bar {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .lifecycle-fill {
+      height: 100%;
+      background: #4CAF50;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    
+    .report-generator {
+      margin-top: 15px;
+    }
+    
+    .report-controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      align-items: end;
+    }
+    
+    @media (min-width: 768px) {
+      .report-controls {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .control-group label {
+      color: #b0c4de;
+      font-size: 14px;
+    }
+    
+    .control-group select,
+    .control-group input {
+      background: #2a4a6b;
+      color: #fff;
+      border: 1px solid #4a6a8b;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+    
+    .generate-btn {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+    
+    .generate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+    
+    .report-history {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .report-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+    
+    .report-item i {
+      font-size: 24px;
+      color: #ffa500;
+    }
+    
+    .report-info {
+      flex: 1;
+    }
+    
+    .report-info h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+    }
+    
+    .report-info p {
+      margin: 0;
+      color: #888;
+      font-size: 12px;
+    }
+    
+    .download-btn {
+      background: #2196F3;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      margin-top: 15px;
+    }
+    
+    @media (min-width: 768px) {
+      .settings-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-top: 20px;
+      }
+    }
+    
+    .setting-group {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 8px;
+    }
+    
+    .setting-group h4 {
+      margin-top: 0;
+      color: #ffa500;
+    }
+    
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .setting-item label {
+      color: #b0c4de;
+    }
+    
+    .setting-item input,
+    .setting-item select {
+      background: #2a4a6b;
+      color: #fff;
+      border: 1px solid #4a6a8b;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+    
+    .settings-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    
+    .save-btn {
+      background: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    
+    .reset-btn {
+      background: #f44336;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    
+    .user-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+    
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #ffa500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #000;
+    }
+    
+    .user-info {
+      flex: 1;
+    }
+    
+    .user-info h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+    }
+    
+    .user-info p {
+      margin: 0;
+      color: #888;
+      font-size: 12px;
+    }
+    
+    .user-role {
+      padding: 4px 8px;
+      background: #2196F3;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .user-status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .user-status.active {
+      background: #4CAF50;
+      color: #fff;
+    }
+    
+    .user-status.inactive {
+      background: #666;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-title">
+      <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Welding Torch Handle -->
+        <rect x="20" y="40" width="8" height="35" rx="4" fill="#2a4a6b" stroke="#ffa500" stroke-width="2"/>
+        
+        <!-- Torch Neck -->
+        <rect x="28" y="45" width="25" height="6" rx="3" fill="#4a6a8b" stroke="#ffa500" stroke-width="1.5"/>
+        
+        <!-- Torch Tip -->
+        <rect x="53" y="46" width="8" height="4" rx="2" fill="#1a3a5c" stroke="#ffa500" stroke-width="1.5"/>
+        
+        <!-- Welding Arc - Main -->
+        <circle cx="65" cy="48" r="4" fill="#ffa500" opacity="0.9"/>
+        <circle cx="65" cy="48" r="6" fill="#ffa500" opacity="0.5"/>
+        <circle cx="65" cy="48" r="8" fill="#ffa500" opacity="0.2"/>
+        
+        <!-- Arc Sparks -->
+        <path d="M60 45 L68 42 M62 52 L70 55 M58 48 L66 48" stroke="#ffa500" stroke-width="2" opacity="0.8"/>
+        <path d="M61 44 L69 41 M63 53 L71 56 M59 49 L67 49" stroke="#ffff00" stroke-width="1" opacity="0.6"/>
+        
+        <!-- Workpiece -->
+        <rect x="70" y="45" width="25" height="6" rx="1" fill="#666" stroke="#888" stroke-width="1"/>
+        
+        <!-- Weld Pool -->
+        <ellipse cx="70" cy="48" rx="3" ry="1.5" fill="#ffa500" opacity="0.7"/>
+        
+        <!-- Cable -->
+        <path d="M20 50 Q10 55 8 65 Q6 75 10 85" stroke="#333" stroke-width="3" fill="none"/>
+        <path d="M20 52 Q12 57 10 67 Q8 77 12 87" stroke="#666" stroke-width="2" fill="none"/>
+        
+        <!-- Gas Nozzle -->
+        <rect x="48" y="42" width="8" height="12" rx="4" fill="rgba(173,216,230,0.3)" stroke="#87CEEB" stroke-width="1"/>
+        
+        <!-- Sparks Animation -->
+        <g opacity="0.8">
+          <circle cx="67" cy="45" r="1" fill="#ffff00"/>
+          <circle cx="69" cy="51" r="1" fill="#ffa500"/>
+          <circle cx="63" cy="50" r="1" fill="#ffff00"/>
+          <circle cx="71" cy="46" r="1" fill="#ffa500"/>
+        </g>
+      </svg>
+      <span style="font-size: 14px;">WELDING ROBOT DATA</span>
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span>Online</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div id="currentTime" style="font-size: 12px; color: #ffa500; font-weight: bold; text-align: right;"></div>
+
+      <select id="robotSelect">
+        <option value="arm1">Arm_1</option>
+        <option value="arm2">Arm_2</option>
+        <option value="arm3">Arm_3</option>
+        <option value="bcenter1">B_Center_1</option>
+        <option value="bcenter2">B_Center_2</option>
+        <option value="bcenter3">B_Center_3</option>
+        <option value="bdock1">B_Dock_1</option>
+        <option value="bdock2">B_Dock_2</option>
+        <option value="bdock3">B_Dock_3</option>
+        <option value="cfl1">CFL_1</option>
+        <option value="cfl2">CFL_2</option>
+        <option value="cfl3">CFL_3</option>
+        <option value="cfu1">CFU_1</option>
+        <option value="cfu2">CFU_2</option>
+        <option value="sf1">SF_1</option>
+        <option value="sf2">SF_2</option>
+      </select>
+      <div id="dateFilterContainer" style="display: none; gap: 5px; align-items: center;">
+        <input type="date" id="startDateFilter" style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 6px 8px; border-radius: 6px; font-size: 12px;">
+        <span style="color: #b0c4de; font-size: 12px;">to</span>
+        <input type="date" id="endDateFilter" style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 6px 8px; border-radius: 6px; font-size: 12px;">
+        <button id="applyDateFilter" style="background: #4CAF50; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">Apply</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <nav>
+      <button class="mobile-nav-toggle" onclick="toggleMobileNav()">
+        <i class="fas fa-bars"></i> Menu
+      </button>
+      <div class="nav-content">
+        <ul>
+          <li><a href="#" onclick="showSection('overview')" class="nav-link active"><i class="fas fa-tachometer-alt"></i> Overview</a></li>
+          <li><a href="#" onclick="showSection('realtime')" class="nav-link"><i class="fas fa-broadcast-tower"></i> Real-time Monitor</a></li>
+          <li><a href="#" onclick="showSection('analytics')" class="nav-link"><i class="fas fa-chart-line"></i> Advanced Analytics</a></li>
+          <li><a href="#" onclick="showSection('downtime')" class="nav-link"><i class="fas fa-clock"></i> Downtime Analysis</a></li>
+          <ul>
+            <li><a href="#" onclick="showSection('stoptime')" class="nav-link"><i class="fas fa-pause"></i> Stop Time</a></li>
+            <li><a href="#" onclick="showSection('error')" class="nav-link"><i class="fas fa-exclamation-triangle"></i> Error Log</a></li>
+          </ul>
+          <li><a href="#" onclick="showSection('productivity')" class="nav-link"><i class="fas fa-chart-bar"></i> Productivity</a></li>
+          <li><a href="#" onclick="showSection('quality')" class="nav-link"><i class="fas fa-medal"></i> Quality Control</a></li>
+          <li><a href="#" onclick="showSection('maintenance')" class="nav-link"><i class="fas fa-tools"></i> Maintenance</a></li>
+          <li><a href="#" onclick="showSection('targets')" class="nav-link"><i class="fas fa-bullseye"></i> Targets</a></li>
+          <li><a href="#" onclick="showSection('counter')" class="nav-link"><i class="fas fa-wrench"></i> Countermeasure</a></li>
+          <li><a href="#" onclick="showSection('reports')" class="nav-link"><i class="fas fa-file-alt"></i> Reports</a></li>
+          <li><a href="#" onclick="showSection('settings')" class="nav-link"><i class="fas fa-cog"></i> Settings</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Overview Section -->
+      <section id="overview" class="section active">
+        <!-- Quick Status Banner -->
+        <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+            <div>
+              <h3 style="margin: 0 0 5px 0; font-size: 24px;">🤖 Robot Welding System Status</h3>
+              <p style="margin: 0; opacity: 0.9; font-size: 16px;">All systems operational - Production running smoothly</p>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 32px; font-weight: bold; margin-bottom: 5px;">87.3%</div>
+              <div style="opacity: 0.9;">Overall OEE</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Key Performance Indicators -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="oeeValue">87.3%</div>
+            <div class="metric-label">Overall OEE</div>
+            <div class="metric-change positive">↗ +2.1% vs target (85%)</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="activeRobots">12/15</div>
+            <div class="metric-label">Active Robots</div>
+            <div class="metric-change positive">3 in maintenance</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">🤖 Real-time Status</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="cycleValue">1,247</div>
+            <div class="metric-label">Cycles Today</div>
+            <div class="metric-change positive">↗ Target: 1,200 (103.9%)</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="errorValue">47</div>
+            <div class="metric-label">Errors This Week</div>
+            <div class="metric-change negative">↗ Target: 15 (313%)</div>
+            <div style="font-size: 10px; color: #f44336; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="avgArcTime">42.8s</div>
+            <div class="metric-label">Avg Arc Time</div>
+            <div class="metric-change positive">↘ -2.1s vs target</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="stopEvents">23</div>
+            <div class="metric-label">Stop Events Today</div>
+            <div class="metric-change negative">↗ +5 vs yesterday</div>
+            <div style="font-size: 10px; color: #ffa500; margin-top: 5px;">⏸️ Stop Time Data</div>
+          </div>
+        </div>
+
+        <!-- Robot Fleet Status -->
+        <div class="card">
+          <h2>🤖 Robot Fleet Overview</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+            <div class="robot-status" style="border-left: 4px solid #4CAF50;">
+              <h4 style="color: #4CAF50;">ARM Series (3/3)</h4>
+              <div class="status-grid">
+                <div>ARM_1: <span style="color: #4CAF50;">Running</span></div>
+                <div>ARM_2: <span style="color: #4CAF50;">Running</span></div>
+                <div>ARM_3: <span style="color: #4CAF50;">Running</span></div>
+              </div>
+            </div>
+            <div class="robot-status" style="border-left: 4px solid #4CAF50;">
+              <h4 style="color: #4CAF50;">B_CENTER Series (3/3)</h4>
+              <div class="status-grid">
+                <div>B_CENTER_1: <span style="color: #4CAF50;">Running</span></div>
+                <div>B_CENTER_2: <span style="color: #4CAF50;">Running</span></div>
+                <div>B_CENTER_3: <span style="color: #4CAF50;">Running</span></div>
+              </div>
+            </div>
+            <div class="robot-status" style="border-left: 4px solid #ffa500;">
+              <h4 style="color: #ffa500;">B_DOCK Series (2/3)</h4>
+              <div class="status-grid">
+                <div>B_DOCK_1: <span style="color: #4CAF50;">Running</span></div>
+                <div>B_DOCK_2: <span style="color: #4CAF50;">Running</span></div>
+                <div>B_DOCK_3: <span style="color: #ffa500;">Maintenance</span></div>
+              </div>
+            </div>
+            <div class="robot-status" style="border-left: 4px solid #f44336;">
+              <h4 style="color: #f44336;">CFL Series (2/3)</h4>
+              <div class="status-grid">
+                <div>CFL_1: <span style="color: #4CAF50;">Running</span></div>
+                <div>CFL_2: <span style="color: #f44336;">Error E007</span></div>
+                <div>CFL_3: <span style="color: #ffa500;">Maintenance</span></div>
+              </div>
+            </div>
+            <div class="robot-status" style="border-left: 4px solid #4CAF50;">
+              <h4 style="color: #4CAF50;">CFU Series (2/2)</h4>
+              <div class="status-grid">
+                <div>CFU_1: <span style="color: #4CAF50;">Running</span></div>
+                <div>CFU_2: <span style="color: #4CAF50;">Running</span></div>
+              </div>
+            </div>
+            <div class="robot-status" style="border-left: 4px solid #ffa500;">
+              <h4 style="color: #ffa500;">SF Series (1/2)</h4>
+              <div class="status-grid">
+                <div>SF_1: <span style="color: #4CAF50;">Running</span></div>
+                <div>SF_2: <span style="color: #ffa500;">Maintenance</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2>📊 OEE Trend (30 Days)</h2>
+            <div class="chart-container">
+              <canvas id="overviewChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2>📈 Today's Performance vs Target</h2>
+            <div class="chart-container">
+              <canvas id="productivityChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+          <h2>⚡ Quick Actions & Alerts</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
+            <div style="padding: 15px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid #f44336; border-radius: 6px;">
+              <h4 style="color: #f44336; margin: 0 0 10px 0;">🚨 Critical Alert</h4>
+              <p style="margin: 0 0 10px 0; color: #b0c4de;">CFL_2 - Position Sensor Error (E007)</p>
+              <button style="background: #f44336; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;" onclick="showSection('error')">View Details</button>
+            </div>
+            <div style="padding: 15px; background: rgba(255, 165, 0, 0.1); border-left: 4px solid #ffa500; border-radius: 6px;">
+              <h4 style="color: #ffa500; margin: 0 0 10px 0;">⚠ Maintenance Due</h4>
+              <p style="margin: 0 0 10px 0; color: #b0c4de;">Wire feeder cleaning scheduled for today</p>
+              <button style="background: #ffa500; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;" onclick="showMaintenancePopup()">Schedule Now</button>
+            </div>
+            <div style="padding: 15px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 6px;">
+              <h4 style="color: #2196F3; margin: 0 0 10px 0;">📊 Weekly Report</h4>
+              <p style="margin: 0 0 10px 0; color: #b0c4de;">Production report ready for download</p>
+              <button style="background: #2196F3; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;" onclick="showSection('reports')">Generate Report</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Downtime Section -->
+      <section id="downtime" class="section">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">5.8%</div>
+            <div class="metric-label">Total Downtime</div>
+            <div class="metric-change positive">↘ -1.2% vs last month</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">2.3 hrs</div>
+            <div class="metric-label">Avg Daily Downtime</div>
+            <div class="metric-change positive">↘ -0.5 hrs vs target</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">8</div>
+            <div class="metric-label">Downtime Events</div>
+            <div class="metric-change negative">↗ +2 vs last week</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">17 min</div>
+            <div class="metric-label">Avg Event Duration</div>
+            <div class="metric-change positive">↘ -3 min vs target</div>
+          </div>
+        </div>
+
+        <div class="two-column-grid" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+          <div class="card">
+            <h2>⏱️ Downtime Breakdown</h2>
+            <div class="chart-container">
+              <canvas id="downtimeChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2>📊 Downtime Trend (7 Days)</h2>
+            <div class="chart-container">
+              <canvas id="downtimeTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🔍 Downtime Root Cause Analysis</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div class="countermeasure-item">
+              <h4 style="color: #f44336; margin-top: 0;">Equipment Failure (45%)</h4>
+              <p>Wire feeder jam, sensor malfunction, torch issues</p>
+              <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                <span>Impact: 1.04 hrs/day</span>
+                <span style="color: #f44336;">High Priority</span>
+              </div>
+            </div>
+            <div class="countermeasure-item">
+              <h4 style="color: #ffa500; margin-top: 0;">Material Issues (25%)</h4>
+              <p>Gas pressure low, wire quality problems</p>
+              <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                <span>Impact: 0.58 hrs/day</span>
+                <span style="color: #ffa500;">Medium Priority</span>
+              </div>
+            </div>
+            <div class="countermeasure-item">
+              <h4 style="color: #4CAF50; margin-top: 0;">Setup/Changeover (30%)</h4>
+              <p>Program changes, fixture adjustments</p>
+              <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                <span>Impact: 0.69 hrs/day</span>
+                <span style="color: #4CAF50;">Planned</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>⚡ Real-time Downtime Events</h2>
+          <div class="error-list">
+            <div class="error-item">
+              <div class="error-time">14:23</div>
+              <div class="error-desc">
+                <strong>Wire Feed Jam</strong><br>
+                Duration: 12 minutes | Status: Resolved<br>
+                <small>Root cause: Wire spool tension too high</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Resolved</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">11:45</div>
+              <div class="error-desc">
+                <strong>Gas Pressure Low</strong><br>
+                Duration: 8 minutes | Status: Resolved<br>
+                <small>Root cause: Regulator adjustment needed</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Resolved</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">09:15</div>
+              <div class="error-desc">
+                <strong>Program Setup</strong><br>
+                Duration: 25 minutes | Status: Completed<br>
+                <small>Planned: New part program loading</small>
+              </div>
+              <div style="color: #2196F3;">📋 Planned</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stop Time Section -->
+      <section id="stoptime" class="section">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">23</div>
+            <div class="metric-label">Total Stop Events Today</div>
+            <div class="metric-change negative">↗ +5 vs yesterday</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">4.2 min</div>
+            <div class="metric-label">Avg Stop Duration</div>
+            <div class="metric-change positive">↘ -1.1 min vs target</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">96.6 min</div>
+            <div class="metric-label">Total Stop Time Today</div>
+            <div class="metric-change negative">↗ +18 min vs yesterday</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">3.2</div>
+            <div class="metric-label">Stops per Hour</div>
+            <div class="metric-change negative">↗ +0.8 vs target</div>
+          </div>
+        </div>
+
+        <div class="two-column-grid">
+          <div class="card">
+            <h2>⏸️ Frekuensi Stop Time Per Hari</h2>
+            <div class="chart-container">
+              <canvas id="stopTimeChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2>⏱️ Stop Duration Analysis</h2>
+            <div class="chart-container">
+              <canvas id="stopDurationChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📋 Stop Time Categories</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+            <div class="robot-status">
+              <h4>Emergency Stops</h4>
+              <div class="status-grid">
+                <div>Today: <span style="color: #f44336;">3 events</span></div>
+                <div>Avg Duration: <span>2.1 min</span></div>
+                <div>Total Time: <span>6.3 min</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>Cycle Stops</h4>
+              <div class="status-grid">
+                <div>Today: <span style="color: #ffa500;">12 events</span></div>
+                <div>Avg Duration: <span>3.8 min</span></div>
+                <div>Total Time: <span>45.6 min</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>Manual Stops</h4>
+              <div class="status-grid">
+                <div>Today: <span style="color: #2196F3;">8 events</span></div>
+                <div>Avg Duration: <span>5.6 min</span></div>
+                <div>Total Time: <span>44.8 min</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🕐 Hourly Stop Pattern</h2>
+          <div class="chart-container">
+            <canvas id="hourlyStopChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📊 Daily Stop Duration (2 Months) & Playback Stop</h2>
+          <div style="background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <small style="color: #2196F3;">
+              <i class="fas fa-info-circle"></i> Grafik menampilkan stop duration harian dan playback stop selama 2 bulan. Minggu ditandai dengan warna merah.
+            </small>
+          </div>
+          <div class="chart-container" style="height: 400px;">
+            <canvas id="dailyStopDurationChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📊 Recent Stop Events</h2>
+          <div class="error-list">
+            <div class="error-item">
+              <div class="error-time">15:42</div>
+              <div class="error-desc">
+                <strong>Manual Stop</strong> - Operator intervention<br>
+                <small>Duration: 3.2 min | Reason: Quality check</small>
+              </div>
+              <div style="color: #2196F3;">Manual</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">15:18</div>
+              <div class="error-desc">
+                <strong>Cycle Stop</strong> - Program pause<br>
+                <small>Duration: 1.8 min | Reason: Wire feed adjustment</small>
+              </div>
+              <div style="color: #ffa500;">Cycle</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">14:55</div>
+              <div class="error-desc">
+                <strong>Emergency Stop</strong> - Safety triggered<br>
+                <small>Duration: 4.5 min | Reason: Torch collision detected</small>
+              </div>
+              <div style="color: #f44336;">Emergency</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Error Section -->
+      <section id="error" class="section">
+
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="totalErrorsWeek">47</div>
+            <div class="metric-label">Total Errors This Week</div>
+            <div class="metric-change negative">↗ +8 vs last week</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="criticalErrors">12</div>
+            <div class="metric-label">Critical Errors</div>
+            <div class="metric-change negative">↗ +3 vs last week</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="avgResolutionTime">23 min</div>
+            <div class="metric-label">Avg Resolution Time</div>
+            <div class="metric-change positive">↘ -5 min vs target</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="errorRate">3.8%</div>
+            <div class="metric-label">Error Rate</div>
+            <div class="metric-change negative">↗ +0.5% vs target</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Calculated</div>
+          </div>
+        </div>
+
+        <div class="two-column-grid">
+          <div class="card">
+            <h2>❌ Error Frequency by Category</h2>
+            <div class="chart-container">
+              <canvas id="errorChart"></canvas>
+            </div>
+            <div style="font-size: 12px; color: #888; margin-top: 10px; text-align: center;">
+              📊 Data from Error.xlsx - Updated Weekly
+            </div>
+          </div>
+          <div class="card">
+            <h2>📈 Error Trend (Weekly)</h2>
+            <div class="chart-container">
+              <canvas id="errorTrendChart"></canvas>
+            </div>
+            <div style="font-size: 12px; color: #888; margin-top: 10px; text-align: center;">
+              📊 Historical data from Error.xlsx
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h2>🚨 Recent Error Log (From Excel File)</h2>
+          <div style="background: rgba(76, 175, 80, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <small style="color: #4CAF50;">
+              <i class="fas fa-sync-alt"></i> Data ini diambil langsung dari Google Sheets - Real-time Error Logs
+            </small>
+          </div>
+          <div class="error-list" id="realErrorList">
+            <!-- Sample data structure based on typical error log -->
+            <div class="error-item">
+              <div class="error-time">2025-08-20 14:23:15</div>
+              <div class="error-desc">
+                <strong>Error Code: E001</strong> - Wire Feed Jam<br>
+                Program: ARM_1_P001 | Duration: 12 min | Konfirmasi: ✅ Pak Cecep<br>
+                <small>Description: Wire feeder mechanism jammed during operation</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Resolved</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">2025-08-20 11:45:32</div>
+              <div class="error-desc">
+                <strong>Error Code: E003</strong> - Gas Pressure Low<br>
+                Program: B_CENTER_1_P005 | Duration: 8 min | Konfirmasi: ✅ Pak Cecep<br>
+                <small>Description: Argon gas pressure below minimum threshold</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Resolved</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">2025-08-20 09:15:44</div>
+              <div class="error-desc">
+                <strong>Error Code: E007</strong> - Position Sensor Error<br>
+                Program: ARM_2_P003 | Duration: 25 min | Konfirmasi: ⏳ Pending<br>
+                <small>Description: Robot position sensor calibration error</small>
+              </div>
+              <div style="color: #f44336;">⚠ Critical</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">2025-08-19 16:30:12</div>
+              <div class="error-desc">
+                <strong>Error Code: E002</strong> - Temperature Overheat<br>
+                Program: CFL_1_P002 | Duration: 15 min | Konfirmasi: ✅ Pak Cecep<br>
+                <small>Description: Welding torch temperature exceeded safe limits</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Resolved</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📋 Error Categories & Codes</h2>
+          <div style="background: rgba(76, 175, 80, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <small style="color: #4CAF50;">
+              <i class="fas fa-sync-alt"></i> Referensi dari Google Sheets - Live Error Categories
+            </small>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+            <div class="robot-status">
+              <h4>Mechanical Errors (E001-E010)</h4>
+              <div class="status-grid">
+                <div>E001: <span>Wire Feed Jam</span></div>
+                <div>E002: <span>Temperature Overheat</span></div>
+                <div>E003: <span>Gas Pressure Low</span></div>
+                <div>E004: <span>Torch Collision</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>Sensor Errors (E011-E020)</h4>
+              <div class="status-grid">
+                <div>E007: <span>Position Sensor Error</span></div>
+                <div>E011: <span>Proximity Sensor Fail</span></div>
+                <div>E015: <span>Current Sensor Error</span></div>
+                <div>E018: <span>Vision System Error</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>Program Errors (E021-E030)</h4>
+              <div class="status-grid">
+                <div>E021: <span>Program Load Error</span></div>
+                <div>E025: <span>Path Planning Error</span></div>
+                <div>E028: <span>Parameter Out of Range</span></div>
+                <div>E030: <span>Sequence Error</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Productivity Section -->
+      <section id="productivity" class="section">
+
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="partsProducedWeek">1,247</div>
+            <div class="metric-label">Parts Produced This Week</div>
+            <div class="metric-change positive">↗ +87 vs target</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="avgCycleTime">1.15 min</div>
+            <div class="metric-label">Avg Cycle Time</div>
+            <div class="metric-change positive">↘ -0.05 min vs target</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="successRate">96.2%</div>
+            <div class="metric-label">Success Rate</div>
+            <div class="metric-change positive">↗ +1.8% vs target</div>
+            <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 Live Google Sheets</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="performanceRate">89.1%</div>
+            <div class="metric-label">Performance Rate</div>
+            <div class="metric-change positive">↗ +2.3% vs target</div>
+            <div style="font-size: 10px; color: #888; margin-top: 5px;">🔧 Calculated</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>⏱️ Cycle Time Trend</h2>
+          <div class="chart-container">
+            <canvas id="cycleTimeChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🎯 Production Targets vs Actual</h2>
+          <div class="chart-container">
+            <canvas id="targetVsActualChart"></canvas>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2>📊 Hourly Production Rate</h2>
+            <div class="chart-container">
+              <canvas id="hourlyProductionChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2>🔄 Efficiency Factors</h2>
+            <div style="margin-top: 20px;">
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Setup Efficiency</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 78%; background: #ffa500;"></div>
+                </div>
+                <span>78%</span>
+              </div>
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Welding Speed</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 92%; background: #4CAF50;"></div>
+                </div>
+                <span>92%</span>
+              </div>
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Material Flow</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 85%; background: #4CAF50;"></div>
+                </div>
+                <span>85%</span>
+              </div>
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Operator Efficiency</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 88%; background: #4CAF50;"></div>
+                </div>
+                <span>88%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📊 Recent Production Log (From Excel File)</h2>
+          <div style="background: rgba(76, 175, 80, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <small style="color: #4CAF50;">
+              <i class="fas fa-sync-alt"></i> Data ini diambil langsung dari Google Sheets - Real-time Product Data
+            </small>
+          </div>
+          <div class="error-list" id="realProductList">
+            <!-- Sample data structure based on typical product log -->
+            <div class="error-item">
+              <div class="error-time">2025-08-20 15:42:33</div>
+              <div class="error-desc">
+                <strong>Program: ARM_1_P001</strong><br>
+                Arc Time: 45.2 sec | Status: ✅ Success | Model: SFG-A<br>
+                <small>Robot: ARM_1 | Operator: Shift A</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Complete</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">2025-08-20 15:38:21</div>
+              <div class="error-desc">
+                <strong>Program: B_CENTER_1_P005</strong><br>
+                Arc Time: 38.7 sec | Status: ✅ Success | Model: SFG-E<br>
+                <small>Robot: B_CENTER_1 | Operator: Shift A</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Complete</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">2025-08-20 15:35:15</div>
+              <div class="error-desc">
+                <strong>Program: ARM_2_P003</strong><br>
+                Arc Time: 52.1 sec | Status: ⚠ Rework | Model: SFG-C<br>
+                <small>Robot: ARM_2 | Operator: Shift A</small>
+              </div>
+              <div style="color: #ffa500;">⚠ Rework</div>
+            </div>
+            <div class="error-item">
+              <div class="error-time">2025-08-20 15:31:08</div>
+              <div class="error-desc">
+                <strong>Program: CFL_1_P002</strong><br>
+                Arc Time: 41.3 sec | Status: ✅ Success | Model: SFG-G<br>
+                <small>Robot: CFL_1 | Operator: Shift A</small>
+              </div>
+              <div style="color: #4CAF50;">✓ Complete</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🔧 Robot Programs & Performance</h2>
+          <div style="background: rgba(76, 175, 80, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <small style="color: #4CAF50;">
+              <i class="fas fa-sync-alt"></i> Data dari Google Sheets - Real-time Program Robot & Arc Time
+            </small>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+            <div class="robot-status">
+              <h4>ARM_1 Programs</h4>
+              <div class="status-grid">
+                <div>Active Programs: <span style="color: #4CAF50;">12 programs</span></div>
+                <div>Avg Arc Time: <span>45.2 sec</span></div>
+                <div>Model Types: <span>SFG-A, SFG-B</span></div>
+                <div>Utilization: <span style="color: #4CAF50;">87.3%</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>ARM_2 Programs</h4>
+              <div class="status-grid">
+                <div>Active Programs: <span style="color: #4CAF50;">8 programs</span></div>
+                <div>Avg Arc Time: <span>52.1 sec</span></div>
+                <div>Model Types: <span>SFG-C, SFG-D</span></div>
+                <div>Utilization: <span style="color: #ffa500;">78.9%</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>B_CENTER_1 Programs</h4>
+              <div class="status-grid">
+                <div>Active Programs: <span style="color: #4CAF50;">15 programs</span></div>
+                <div>Avg Arc Time: <span>38.7 sec</span></div>
+                <div>Model Types: <span>SFG-E, SFG-F</span></div>
+                <div>Utilization: <span style="color: #4CAF50;">92.1%</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>CFL_1 Programs</h4>
+              <div class="status-grid">
+                <div>Active Programs: <span style="color: #4CAF50;">6 programs</span></div>
+                <div>Avg Arc Time: <span>41.3 sec</span></div>
+                <div>Model Types: <span>SFG-G, SFG-H</span></div>
+                <div>Utilization: <span style="color: #ffa500;">82.5%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📈 Productivity Improvement Opportunities</h2>
+          <div style="background: rgba(255, 165, 0, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <small style="color: #ffa500;">
+              <i class="fas fa-wrench"></i> Analisis berdasarkan Google Sheets - Real-time Product & Error Data
+            </small>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div class="insight-item medium-priority">
+              <i class="fas fa-clock"></i>
+              <div>
+                <h4>WELD_CHASSIS_003 Optimization</h4>
+                <p>Cycle time 1.45 min vs target 1.20 min. Success rate 92.8% perlu improvement.</p>
+                <small>Berdasarkan: Product.xlsx analysis</small>
+              </div>
+            </div>
+            <div class="insight-item high-priority">
+              <i class="fas fa-exclamation-triangle"></i>
+              <div>
+                <h4>Error Reduction Focus</h4>
+                <p>47 errors minggu ini. Focus pada E001 (Wire Feed) dan E007 (Position Sensor).</p>
+                <small>Berdasarkan: Error.xlsx analysis</small>
+              </div>
+            </div>
+            <div class="insight-item low-priority">
+              <i class="fas fa-lightbulb"></i>
+              <div>
+                <h4>Best Practice Replication</h4>
+                <p>WELD_PANEL_004 performance excellent (0.98 min, 99.1%). Apply to other programs.</p>
+                <small>Berdasarkan: Product.xlsx comparison</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Real-time Monitor Section -->
+      <section id="realtime" class="section">
+        <!-- Real-time Watermark -->
+        <div style="position: relative; background: rgba(255, 165, 0, 0.05); border-left: 4px solid #ffa500; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); font-size: 120px; color: rgba(255, 165, 0, 0.1); font-weight: bold; z-index: 1; pointer-events: none;">
+            ⚠ DATA MAINTENANCE
+          </div>
+          <div style="position: relative; z-index: 2;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <i class="fas fa-wrench" style="color: #ffa500;"></i>
+              <strong style="color: #ffa500;">Demo Data - Under Development</strong>
+            </div>
+            <p style="margin: 0; color: #b0c4de; font-size: 14px;">
+              🔧 <strong>Status:</strong> Real-time sensor integration sedang dalam tahap development<br>
+              📊 <strong>Data:</strong> Simulasi untuk demo kepada management<br>
+              🚀 <strong>Next:</strong> Akan diintegrasikan dengan sistem monitoring robot
+            </p>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="currentTemp">245°C</div>
+            <div class="metric-label">Welding Temperature</div>
+            <div class="metric-change" id="tempTrend">Normal Range</div>
+            <div style="font-size: 10px; color: #ffa500; margin-top: 5px;">🔧 Demo Data</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="currentCurrent">180A</div>
+            <div class="metric-label">Welding Current</div>
+            <div class="metric-change" id="currentTrend">Stable</div>
+            <div style="font-size: 10px; color: #ffa500; margin-top: 5px;">🔧 Demo Data</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="gasFlow">15 L/min</div>
+            <div class="metric-label">Gas Flow Rate</div>
+            <div class="metric-change" id="gasTrend">Optimal</div>
+            <div style="font-size: 10px; color: #ffa500; margin-top: 5px;">🔧 Demo Data</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="wireSpeed">8.5 m/min</div>
+            <div class="metric-label">Wire Feed Speed</div>
+            <div class="metric-change" id="wireTrend">Normal</div>
+            <div style="font-size: 10px; color: #ffa500; margin-top: 5px;">🔧 Demo Data</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2><i class="fas fa-thermometer-half"></i> Temperature Monitoring</h2>
+            <div class="chart-container">
+              <canvas id="tempChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2><i class="fas fa-bolt"></i> Current & Voltage</h2>
+            <div class="chart-container">
+              <canvas id="electricalChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-robot"></i> Robot Status Monitor</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div class="robot-status">
+              <h4>Arm Position</h4>
+              <div class="status-grid">
+                <div>X: <span id="posX">125.4mm</span></div>
+                <div>Y: <span id="posY">-89.2mm</span></div>
+                <div>Z: <span id="posZ">340.1mm</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>Joint Angles</h4>
+              <div class="status-grid">
+                <div>J1: <span id="joint1">45.2°</span></div>
+                <div>J2: <span id="joint2">-12.8°</span></div>
+                <div>J3: <span id="joint3">67.5°</span></div>
+              </div>
+            </div>
+            <div class="robot-status">
+              <h4>System Status</h4>
+              <div class="status-grid">
+                <div>Mode: <span style="color: #4CAF50;">AUTO</span></div>
+                <div>Speed: <span>85%</span></div>
+                <div>Program: <span>WELD_001</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Advanced Analytics Section -->
+      <section id="analytics" class="section">
+        <!-- Analytics Watermark -->
+        <div style="position: relative; background: rgba(255, 165, 0, 0.05); border-left: 4px solid #ffa500; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); font-size: 120px; color: rgba(255, 165, 0, 0.1); font-weight: bold; z-index: 1; pointer-events: none;">
+            ⚠ DATA MAINTENANCE
+          </div>
+          <div style="position: relative; z-index: 2;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <i class="fas fa-brain" style="color: #ffa500;"></i>
+              <strong style="color: #ffa500;">AI Analytics - Future Development</strong>
+            </div>
+            <p style="margin: 0; color: #b0c4de; font-size: 14px;">
+              🤖 <strong>Status:</strong> AI/ML integration untuk predictive analytics<br>
+              📊 <strong>Data:</strong> Demo untuk menunjukkan potensi sistem<br>
+              🚀 <strong>Plan:</strong> Akan menggunakan data Error.xlsx dan Product.xlsx untuk training model
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-chart-line"></i> Predictive Analytics</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <h4>Failure Prediction Model</h4>
+              <div class="chart-container" style="height: 250px;">
+                <canvas id="predictionChart"></canvas>
+              </div>
+            </div>
+            <div>
+              <h4>Component Health Score</h4>
+              <div class="health-scores">
+                <div class="health-item">
+                  <span>Wire Feeder</span>
+                  <div class="health-bar">
+                    <div class="health-fill" style="width: 85%; background: #4CAF50;"></div>
+                  </div>
+                  <span>85%</span>
+                </div>
+                <div class="health-item">
+                  <span>Gas Valve</span>
+                  <div class="health-bar">
+                    <div class="health-fill" style="width: 72%; background: #ffa500;"></div>
+                  </div>
+                  <span>72%</span>
+                </div>
+                <div class="health-item">
+                  <span>Torch Assembly</span>
+                  <div class="health-bar">
+                    <div class="health-fill" style="width: 91%; background: #4CAF50;"></div>
+                  </div>
+                  <span>91%</span>
+                </div>
+                <div class="health-item">
+                  <span>Position Sensor</span>
+                  <div class="health-bar">
+                    <div class="health-fill" style="width: 58%; background: #f44336;"></div>
+                  </div>
+                  <span>58%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-brain"></i> AI Insights & Recommendations</h2>
+          <div class="ai-insights">
+            <div class="insight-item high-priority">
+              <i class="fas fa-exclamation-circle"></i>
+              <div>
+                <h4>High Priority Alert</h4>
+                <p>Position sensor showing degradation pattern. Recommend replacement within 5 days to prevent unplanned downtime.</p>
+                <small>Confidence: 94% | Impact: High</small>
+              </div>
+            </div>
+            <div class="insight-item medium-priority">
+              <i class="fas fa-info-circle"></i>
+              <div>
+                <h4>Optimization Opportunity</h4>
+                <p>Welding current can be reduced by 8A while maintaining quality. Estimated energy savings: 12% per cycle.</p>
+                <small>Confidence: 87% | Impact: Medium</small>
+              </div>
+            </div>
+            <div class="insight-item low-priority">
+              <i class="fas fa-lightbulb"></i>
+              <div>
+                <h4>Performance Insight</h4>
+                <p>Peak efficiency occurs between 10:00-14:00. Consider scheduling critical operations during this window.</p>
+                <small>Confidence: 76% | Impact: Low</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quality Control Section -->
+      <section id="quality" class="section">
+        <div style="background: rgba(255, 165, 0, 0.05); border-left: 4px solid #ffa500; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <i class="fas fa-exclamation-triangle" style="color: #ffa500;"></i>
+            <strong style="color: #ffa500;">Quality Data - Belum Tersedia</strong>
+          </div>
+          <p style="margin: 0; color: #b0c4de; font-size: 14px;">
+            📊 <strong>Status:</strong> Data quality belum tersedia di Google Drive<br>
+            🔧 <strong>Demo:</strong> Simulasi quality metrics untuk presentasi<br>
+            📋 <strong>Required:</strong> File Quality.xlsx dengan data inspeksi dan defect rate
+          </p>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">98.7%</div>
+            <div class="metric-label">First Pass Yield</div>
+            <div class="metric-change positive">↗ +0.3% vs target</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">1.2%</div>
+            <div class="metric-label">Defect Rate</div>
+            <div class="metric-change positive">↘ -0.1% vs last week</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">99.1%</div>
+            <div class="metric-label">Quality Score</div>
+            <div class="metric-change positive">↗ +0.4% vs target</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">15</div>
+            <div class="metric-label">Rework Items</div>
+            <div class="metric-change negative">↗ +3 vs yesterday</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2><i class="fas fa-medal"></i> Quality Trends</h2>
+            <div class="chart-container">
+              <canvas id="qualityChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2><i class="fas fa-search"></i> Defect Analysis</h2>
+            <div class="chart-container">
+              <canvas id="defectChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-microscope"></i> Quality Control Checklist</h2>
+          <div class="quality-checklist">
+            <div class="checklist-item completed">
+              <i class="fas fa-check-circle"></i>
+              <span>Weld penetration depth verification</span>
+              <span class="timestamp">08:30 AM</span>
+            </div>
+            <div class="checklist-item completed">
+              <i class="fas fa-check-circle"></i>
+              <span>Surface finish inspection</span>
+              <span class="timestamp">09:15 AM</span>
+            </div>
+            <div class="checklist-item pending">
+              <i class="fas fa-clock"></i>
+              <span>Dimensional accuracy check</span>
+              <span class="timestamp">Pending</span>
+            </div>
+            <div class="checklist-item pending">
+              <i class="fas fa-clock"></i>
+              <span>Material certification review</span>
+              <span class="timestamp">Scheduled 14:00</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Maintenance Section -->
+      <section id="maintenance" class="section">
+
+        <div class="card">
+          <h2><i class="fas fa-tools"></i> Maintenance Schedule</h2>
+          <div class="maintenance-calendar">
+            <div class="maintenance-item urgent">
+              <div class="maintenance-date">
+                <div class="day">25</div>
+                <div class="month">AUG</div>
+              </div>
+              <div class="maintenance-details">
+                <h4>Wire Feeder Cleaning</h4>
+                <p>Scheduled maintenance for wire feeding mechanism</p>
+                <div class="maintenance-meta">
+                  <span class="duration">2 hours</span>
+                  <span class="technician">Tech: Ahmad S.</span>
+                </div>
+              </div>
+              <div class="maintenance-status urgent">URGENT</div>
+            </div>
+            
+            <div class="maintenance-item scheduled">
+              <div class="maintenance-date">
+                <div class="day">28</div>
+                <div class="month">AUG</div>
+              </div>
+              <div class="maintenance-details">
+                <h4>Sensor Calibration</h4>
+                <p>Position and temperature sensor recalibration</p>
+                <div class="maintenance-meta">
+                  <span class="duration">1.5 hours</span>
+                  <span class="technician">Tech: Budi R.</span>
+                </div>
+              </div>
+              <div class="maintenance-status scheduled">SCHEDULED</div>
+            </div>
+
+            <div class="maintenance-item completed">
+              <div class="maintenance-date">
+                <div class="day">20</div>
+                <div class="month">AUG</div>
+              </div>
+              <div class="maintenance-details">
+                <h4>Gas System Check</h4>
+                <p>Pressure regulators and flow meters inspection</p>
+                <div class="maintenance-meta">
+                  <span class="duration">1 hour</span>
+                  <span class="technician">Tech: Sari M.</span>
+                </div>
+              </div>
+              <div class="maintenance-status completed">COMPLETED</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2><i class="fas fa-chart-pie"></i> Maintenance Costs</h2>
+            <div class="chart-container">
+              <canvas id="maintenanceCostChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2><i class="fas fa-wrench"></i> Component Lifecycle</h2>
+            <div class="component-lifecycle">
+              <div class="lifecycle-item">
+                <span>Welding Torch</span>
+                <div class="lifecycle-bar">
+                  <div class="lifecycle-fill" style="width: 65%;"></div>
+                </div>
+                <span>650h / 1000h</span>
+              </div>
+              <div class="lifecycle-item">
+                <span>Contact Tips</span>
+                <div class="lifecycle-bar">
+                  <div class="lifecycle-fill" style="width: 90%; background: #f44336;"></div>
+                </div>
+                <span>180h / 200h</span>
+              </div>
+              <div class="lifecycle-item">
+                <span>Gas Nozzle</span>
+                <div class="lifecycle-bar">
+                  <div class="lifecycle-fill" style="width: 40%;"></div>
+                </div>
+                <span>200h / 500h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reports Section -->
+      <section id="reports" class="section">
+        <!-- Data Integration Info -->
+        <div style="background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <i class="fas fa-cloud" style="color: #2196F3;"></i>
+            <strong style="color: #2196F3;">Google Sheets Integration - Live Data</strong>
+          </div>
+          <p style="margin: 0; color: #b0c4de; font-size: 14px;">
+            📊 <strong>Program Robot:</strong> Real-time access via Google Sheets API<br>
+            📊 <strong>Product Data:</strong> Live production logs from Google Sheets<br>
+            📊 <strong>Error Categories:</strong> Dynamic error classification system<br>
+            📊 <strong>Error Logs:</strong> Real-time error tracking and monitoring<br>
+            🔄 <strong>Sync:</strong> Automatic real-time synchronization with Google Sheets
+          </p>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-file-alt"></i> Report Generator</h2>
+          <div class="report-generator">
+            <div class="report-controls">
+              <div class="control-group">
+                <label>Report Type:</label>
+                <select id="reportType">
+                  <option>Daily Production Report</option>
+                  <option>Weekly Quality Summary</option>
+                  <option>Monthly OEE Analysis</option>
+                  <option>Maintenance Log</option>
+                  <option>Custom Report</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label>Date Range:</label>
+                <input type="date" id="startDate" value="2025-08-01">
+                <input type="date" id="endDate" value="2025-08-25">
+              </div>
+              <div class="control-group">
+                <label>Format:</label>
+                <select id="reportFormat">
+                  <option>PDF</option>
+                  <option>Excel</option>
+                  <option>CSV</option>
+                </select>
+              </div>
+              <button class="generate-btn" onclick="generateReport()">
+                <i class="fas fa-download"></i> Generate Report
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-history"></i> Recent Reports</h2>
+          <div class="report-history">
+            <div class="report-item">
+              <i class="fas fa-file-pdf"></i>
+              <div class="report-info">
+                <h4>Daily Production - Aug 24, 2025</h4>
+                <p>Generated on Aug 25, 2025 at 08:30 AM</p>
+              </div>
+              <button class="download-btn"><i class="fas fa-download"></i></button>
+            </div>
+            <div class="report-item">
+              <i class="fas fa-file-excel"></i>
+              <div class="report-info">
+                <h4>Weekly Quality Summary - Week 34</h4>
+                <p>Generated on Aug 23, 2025 at 17:45 PM</p>
+              </div>
+              <button class="download-btn"><i class="fas fa-download"></i></button>
+            </div>
+            <div class="report-item">
+              <i class="fas fa-file-csv"></i>
+              <div class="report-info">
+                <h4>OEE Analysis - August 2025</h4>
+                <p>Generated on Aug 20, 2025 at 14:20 PM</p>
+              </div>
+              <button class="download-btn"><i class="fas fa-download"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Section -->
+      <section id="settings" class="section">
+        <div class="card">
+          <h2><i class="fas fa-cog"></i> System Configuration</h2>
+          <div class="settings-grid">
+            <div class="setting-group">
+              <h4>Alert Thresholds</h4>
+              <div class="setting-item">
+                <label>Temperature Warning (°C):</label>
+                <input type="number" value="280" min="200" max="350">
+              </div>
+              <div class="setting-item">
+                <label>Current Limit (A):</label>
+                <input type="number" value="200" min="100" max="300">
+              </div>
+              <div class="setting-item">
+                <label>Gas Flow Min (L/min):</label>
+                <input type="number" value="12" min="5" max="25">
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>Notification Settings</h4>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox" checked> Email Alerts
+                </label>
+              </div>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox" checked> SMS Notifications
+                </label>
+              </div>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox"> Push Notifications
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>Data Retention</h4>
+              <div class="setting-item">
+                <label>Real-time Data:</label>
+                <select>
+                  <option>7 days</option>
+                  <option selected>30 days</option>
+                  <option>90 days</option>
+                </select>
+              </div>
+              <div class="setting-item">
+                <label>Historical Reports:</label>
+                <select>
+                  <option>6 months</option>
+                  <option selected>1 year</option>
+                  <option>2 years</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-actions">
+            <button class="save-btn"><i class="fas fa-save"></i> Save Settings</button>
+            <button class="reset-btn"><i class="fas fa-undo"></i> Reset to Default</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-database"></i> Data Requirements</h2>
+          <div style="background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <i class="fas fa-info-circle" style="color: #2196F3;"></i>
+              <strong style="color: #2196F3;">Data Files yang Dibutuhkan untuk Dashboard</strong>
+            </div>
+            <p style="margin: 0; color: #b0c4de; font-size: 14px;">
+              📁 <strong>Location:</strong> Google Drive folder yang sama dengan Error.xlsx dan Product.xlsx
+            </p>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+            <div class="setting-group">
+              <h4 style="color: #4CAF50;">✅ Data Tersedia (Google Sheets Live)</h4>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 6px;">
+                  <i class="fas fa-check-circle" style="color: #4CAF50;"></i>
+                  <div>
+                    <strong>Program Robot</strong> - Live Google Sheets integration
+                    <br><small style="color: #888;">📊 Real-time program data, arc time, robot categories</small>
+                    <br><small style="color: #4CAF50;">🔗 Connected to Google Sheets API</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 6px;">
+                  <i class="fas fa-check-circle" style="color: #4CAF50;"></i>
+                  <div>
+                    <strong>Product Data</strong> - Live production tracking
+                    <br><small style="color: #888;">📊 Real-time production logs, cycle times, quality data</small>
+                    <br><small style="color: #4CAF50;">🔗 Connected to Google Sheets API</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 6px;">
+                  <i class="fas fa-check-circle" style="color: #4CAF50;"></i>
+                  <div>
+                    <strong>Error Categories</strong> - Dynamic error classification
+                    <br><small style="color: #888;">📊 Real-time error categories and codes</small>
+                    <br><small style="color: #4CAF50;">🔗 Connected to Google Sheets API</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 6px;">
+                  <i class="fas fa-check-circle" style="color: #4CAF50;"></i>
+                  <div>
+                    <strong>Error Logs</strong> - Live error monitoring
+                    <br><small style="color: #888;">📊 Real-time error tracking with confirmations</small>
+                    <br><small style="color: #4CAF50;">🔗 Connected to Google Sheets API</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4 style="color: #f44336;">❌ Data Belum Tersedia</h4>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(244, 67, 54, 0.1); border-radius: 6px;">
+                  <i class="fas fa-times-circle" style="color: #f44336;"></i>
+                  <div>
+                    <strong>Quality.csv</strong> - Data inspeksi dan defect rate
+                    <br><small style="color: #888;">Required: Date, Defect Type, First Pass Yield, Quality Score</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(244, 67, 54, 0.1); border-radius: 6px;">
+                  <i class="fas fa-times-circle" style="color: #f44336;"></i>
+                  <div>
+                    <strong>Maintenance.csv</strong> - Schedule dan history maintenance
+                    <br><small style="color: #888;">Required: Date, Component, Type, Duration, Cost, Status</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(244, 67, 54, 0.1); border-radius: 6px;">
+                  <i class="fas fa-times-circle" style="color: #f44336;"></i>
+                  <div>
+                    <strong>Stop Time.csv</strong> - Detail stop events dengan playback data
+                    <br><small style="color: #888;">Required: Date, Stop Type, Duration, Playback Count, Reason</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(244, 67, 54, 0.1); border-radius: 6px;">
+                  <i class="fas fa-times-circle" style="color: #f44336;"></i>
+                  <div>
+                    <strong>Real-time Sensor.csv</strong> - Data sensor untuk monitoring
+                    <br><small style="color: #888;">Required: Timestamp, Temperature, Current, Gas Flow, Wire Speed</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4 style="color: #ffa500;">⚠ Data Optional (Future Enhancement)</h4>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(255, 165, 0, 0.1); border-radius: 6px;">
+                  <i class="fas fa-exclamation-triangle" style="color: #ffa500;"></i>
+                  <div>
+                    <strong>Countermeasure.csv</strong> - Action plans dan progress tracking
+                    <br><small style="color: #888;">Optional: Problem, Solution, PIC, Target Date, Progress</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(255, 165, 0, 0.1); border-radius: 6px;">
+                  <i class="fas fa-exclamation-triangle" style="color: #ffa500;"></i>
+                  <div>
+                    <strong>Targets.csv</strong> - Production targets dan achievement
+                    <br><small style="color: #888;">Optional: Period, Target Type, Target Value, Actual Value</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-users"></i> User Management</h2>
+          <div class="user-list">
+            <div class="user-item">
+              <div class="user-avatar">BP</div>
+              <div class="user-info">
+                <h4>Bambang Purnomo</h4>
+                <p>Manager - Production Engineering</p>
+              </div>
+              <div class="user-role">Admin</div>
+              <div class="user-status active">Active</div>
+            </div>
+            <div class="user-item">
+              <div class="user-avatar">CS</div>
+              <div class="user-info">
+                <h4>Cecep Sumirat</h4>
+                <p>Asmen Robot - Production Engineering</p>
+              </div>
+              <div class="user-role">Supervisor</div>
+              <div class="user-status active">Active</div>
+            </div>
+            <div class="user-item">
+              <div class="user-avatar">QR</div>
+              <div class="user-info">
+                <h4>Qomar Rifai</h4>
+                <p>Staff Robot - Production Engineering</p>
+              </div>
+              <div class="user-role">Operator</div>
+              <div class="user-status active">Active</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Targets Section -->
+      <section id="targets" class="section">
+        <div class="card">
+          <h2><i class="fas fa-bullseye"></i> Production Targets Management</h2>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="setting-group">
+              <h4>Daily Targets</h4>
+              <div class="setting-item">
+                <label>Production Volume (units):</label>
+                <input type="number" id="dailyProductionTarget" value="180" min="0">
+              </div>
+              <div class="setting-item">
+                <label>OEE Target (%):</label>
+                <input type="number" id="dailyOeeTarget" value="85" min="0" max="100">
+              </div>
+              <div class="setting-item">
+                <label>Uptime Target (%):</label>
+                <input type="number" id="dailyUptimeTarget" value="95" min="0" max="100">
+              </div>
+              <div class="setting-item">
+                <label>Quality Rate Target (%):</label>
+                <input type="number" id="dailyQualityTarget" value="99" min="0" max="100">
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>Weekly Targets</h4>
+              <div class="setting-item">
+                <label>Production Volume (units):</label>
+                <input type="number" id="weeklyProductionTarget" value="1260" min="0">
+              </div>
+              <div class="setting-item">
+                <label>Max Downtime (hours):</label>
+                <input type="number" id="weeklyDowntimeTarget" value="8" min="0" step="0.1">
+              </div>
+              <div class="setting-item">
+                <label>Max Error Count:</label>
+                <input type="number" id="weeklyErrorTarget" value="15" min="0">
+              </div>
+              <div class="setting-item">
+                <label>Cycle Time Target (min):</label>
+                <input type="number" id="weeklyCycleTimeTarget" value="1.2" min="0" step="0.01">
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>Monthly Targets</h4>
+              <div class="setting-item">
+                <label>Production Volume (units):</label>
+                <input type="number" id="monthlyProductionTarget" value="5400" min="0">
+              </div>
+              <div class="setting-item">
+                <label>Overall OEE (%):</label>
+                <input type="number" id="monthlyOeeTarget" value="87" min="0" max="100">
+              </div>
+              <div class="setting-item">
+                <label>First Pass Yield (%):</label>
+                <input type="number" id="monthlyFpyTarget" value="98.5" min="0" max="100" step="0.1">
+              </div>
+              <div class="setting-item">
+                <label>Maintenance Cost (Rp):</label>
+                <input type="number" id="monthlyMaintenanceCostTarget" value="25000000" min="0">
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-actions">
+            <button class="save-btn" onclick="saveTargets()"><i class="fas fa-save"></i> Save Targets</button>
+            <button class="reset-btn" onclick="resetTargets()"><i class="fas fa-undo"></i> Reset to Default</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-chart-line"></i> Target vs Actual Performance</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+            <div class="metric-card">
+              <div class="metric-value" style="color: #4CAF50;">1,247</div>
+              <div class="metric-label">Weekly Production</div>
+              <div class="metric-change positive">Target: 1,260 (98.9%)</div>
+              <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">📊 On Track</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value" style="color: #ffa500;">87.3%</div>
+              <div class="metric-label">Monthly OEE</div>
+              <div class="metric-change positive">Target: 87% (100.3%)</div>
+              <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">🎯 Exceeded</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value" style="color: #f44336;">47</div>
+              <div class="metric-label">Weekly Errors</div>
+              <div class="metric-change negative">Target: 15 (313%)</div>
+              <div style="font-size: 10px; color: #f44336; margin-top: 5px;">⚠ Over Target</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value" style="color: #4CAF50;">1.15 min</div>
+              <div class="metric-label">Avg Cycle Time</div>
+              <div class="metric-change positive">Target: 1.2 min (95.8%)</div>
+              <div style="font-size: 10px; color: #4CAF50; margin-top: 5px;">🎯 Better than Target</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-calendar-check"></i> Target Achievement History</h2>
+          <div class="chart-container">
+            <canvas id="targetAchievementChart"></canvas>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2><i class="fas fa-trophy"></i> Monthly Target Status</h2>
+            <div class="chart-container">
+              <canvas id="monthlyTargetChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2><i class="fas fa-trend-up"></i> Target Trends</h2>
+            <div style="margin-top: 20px;">
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Production Volume</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 98.9%; background: #4CAF50;"></div>
+                </div>
+                <span>98.9%</span>
+              </div>
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>OEE Performance</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 100%; background: #4CAF50;"></div>
+                </div>
+                <span>100.3%</span>
+              </div>
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Quality Rate</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 97.2%; background: #ffa500;"></div>
+                </div>
+                <span>97.2%</span>
+              </div>
+              <div class="health-item" style="margin-bottom: 15px;">
+                <span>Error Control</span>
+                <div class="health-bar">
+                  <div class="health-fill" style="width: 31.9%; background: #f44336;"></div>
+                </div>
+                <span>31.9%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Countermeasure Section -->
+      <section id="counter" class="section">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">12</div>
+            <div class="metric-label">Active Action Plans</div>
+            <div class="metric-change positive">↗ +3 new this week</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">8</div>
+            <div class="metric-label">Completed This Month</div>
+            <div class="metric-change positive">↗ +2 vs target</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">73%</div>
+            <div class="metric-label">Overall Progress</div>
+            <div class="metric-change positive">↗ +8% vs last month</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">4</div>
+            <div class="metric-label">High Priority Items</div>
+            <div class="metric-change negative">↗ +1 vs last week</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-wrench"></i> Active Countermeasure & Action Plans</h2>
+          
+          <div class="countermeasure-item">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <h4 style="color: #f44336; margin: 0;">Gas Pressure Monitoring System</h4>
+              <span style="background: #f44336; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">HIGH PRIORITY</span>
+            </div>
+            <p>Implementasi sistem monitoring tekanan gas real-time untuk mencegah downtime akibat tekanan rendah.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 10px 0; font-size: 14px;">
+              <div><strong>PIC:</strong> Cecep Sumirat</div>
+              <div><strong>Budget:</strong> Rp 25,000,000</div>
+              <div><strong>Expected ROI:</strong> 6 months</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <span>Progress: 75%</span>
+              <span style="color: #4CAF50;">Target: 31 Aug 2025</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 75%;"></div>
+            </div>
+          </div>
+
+          <div class="countermeasure-item">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <h4 style="color: #ffa500; margin: 0;">Preventive Maintenance Schedule</h4>
+              <span style="background: #ffa500; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">MEDIUM PRIORITY</span>
+            </div>
+            <p>Penjadwalan maintenance rutin untuk komponen kritis seperti wire feeder dan sensor positioning.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 10px 0; font-size: 14px;">
+              <div><strong>PIC:</strong> Qomar Rifai</div>
+              <div><strong>Budget:</strong> Rp 15,000,000</div>
+              <div><strong>Expected ROI:</strong> 4 months</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <span>Progress: 45%</span>
+              <span style="color: #ffa500;">Target: 15 Sep 2025</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 45%;"></div>
+            </div>
+          </div>
+
+          <div class="countermeasure-item">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <h4 style="color: #4CAF50; margin: 0;">Operator Training Program</h4>
+              <span style="background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">ON TRACK</span>
+            </div>
+            <p>Program pelatihan untuk operator dalam troubleshooting dasar dan response time improvement.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 10px 0; font-size: 14px;">
+              <div><strong>PIC:</strong> Bambang Purnomo</div>
+              <div><strong>Budget:</strong> Rp 8,000,000</div>
+              <div><strong>Expected ROI:</strong> 3 months</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <span>Progress: 90%</span>
+              <span style="color: #4CAF50;">Target: 25 Aug 2025</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 90%;"></div>
+            </div>
+          </div>
+
+          <div class="countermeasure-item">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <h4 style="color: #f44336; margin: 0;">Wire Feeder Upgrade</h4>
+              <span style="background: #f44336; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">HIGH PRIORITY</span>
+            </div>
+            <p>Upgrade sistem wire feeder dengan teknologi servo motor untuk mengurangi jam dan meningkatkan konsistensi.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 10px 0; font-size: 14px;">
+              <div><strong>PIC:</strong> Qomar Rifai</div>
+              <div><strong>Budget:</strong> Rp 45,000,000</div>
+              <div><strong>Expected ROI:</strong> 8 months</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <span>Progress: 25%</span>
+              <span style="color: #f44336;">Target: 30 Sep 2025</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 25%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2><i class="fas fa-chart-pie"></i> Countermeasure by Category</h2>
+            <div class="chart-container">
+              <canvas id="countermeasureCategoryChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2><i class="fas fa-calendar-alt"></i> Implementation Timeline</h2>
+            <div class="chart-container">
+              <canvas id="implementationTimelineChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-trophy"></i> Completed Countermeasures (Last 3 Months)</h2>
+          <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+            <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; border-left: 4px solid #4CAF50;">
+              <i class="fas fa-check-circle" style="color: #4CAF50; font-size: 24px;"></i>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 5px 0; color: #4CAF50;">Sensor Calibration Automation</h4>
+                <p style="margin: 0; color: #b0c4de; font-size: 14px;">Automated daily sensor calibration - Reduced manual intervention by 80%</p>
+                <small style="color: #888;">Completed: July 15, 2025 | Impact: +2.3% OEE improvement</small>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; border-left: 4px solid #4CAF50;">
+              <i class="fas fa-check-circle" style="color: #4CAF50; font-size: 24px;"></i>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 5px 0; color: #4CAF50;">Quick-Change Fixture System</h4>
+                <p style="margin: 0; color: #b0c4de; font-size: 14px;">Implemented quick-change fixtures - Setup time reduced from 12 to 6 minutes</p>
+                <small style="color: #888;">Completed: June 28, 2025 | Impact: +4.1% productivity increase</small>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; border-left: 4px solid #4CAF50;">
+              <i class="fas fa-check-circle" style="color: #4CAF50; font-size: 24px;"></i>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 5px 0; color: #4CAF50;">Emergency Stop Response Protocol</h4>
+                <p style="margin: 0; color: #b0c4de; font-size: 14px;">Standardized emergency response procedures - Response time improved by 35%</p>
+                <small style="color: #888;">Completed: June 10, 2025 | Impact: +1.8% availability improvement</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-plus-circle"></i> Add New Countermeasure</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <div class="control-group">
+              <label>Problem Description:</label>
+              <textarea style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 8px 12px; border-radius: 6px; width: 100%; height: 80px;" placeholder="Describe the problem or improvement opportunity..."></textarea>
+            </div>
+            <div class="control-group">
+              <label>Proposed Solution:</label>
+              <textarea style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 8px 12px; border-radius: 6px; width: 100%; height: 80px;" placeholder="Describe the proposed countermeasure..."></textarea>
+            </div>
+            <div class="control-group">
+              <label>Priority Level:</label>
+              <select style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 8px 12px; border-radius: 6px; width: 100%;">
+                <option>High Priority</option>
+                <option>Medium Priority</option>
+                <option>Low Priority</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Person in Charge:</label>
+              <select style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 8px 12px; border-radius: 6px; width: 100%;">
+                <option>Qomar Rifai</option>
+                <option>Cecep Sumirat</option>
+                <option>Bambang Purnomo</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Target Completion:</label>
+              <input type="date" style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 8px 12px; border-radius: 6px; width: 100%;">
+            </div>
+            <div class="control-group">
+              <label>Estimated Budget (Rp):</label>
+              <input type="number" style="background: #2a4a6b; color: #fff; border: 1px solid #4a6a8b; padding: 8px 12px; border-radius: 6px; width: 100%;" placeholder="0">
+            </div>
+          </div>
+          <button class="generate-btn" style="margin-top: 20px;" onclick="addCountermeasure()">
+            <i class="fas fa-plus"></i> Add Countermeasure
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Navigation functionality
+    function showSection(sectionId) {
+      // Hide all sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      
+      // Show selected section
+      document.getElementById(sectionId).classList.add('active');
+      
+      // Update navigation
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Show/hide date filter based on section
+      const sectionsWithDateFilter = ['stoptime', 'error', 'productivity', 'quality', 'maintenance'];
+      const dateFilterContainer = document.getElementById('dateFilterContainer');
+      
+      if (sectionsWithDateFilter.includes(sectionId)) {
+        dateFilterContainer.style.display = 'flex';
+      } else {
+        dateFilterContainer.style.display = 'none';
+      }
+      
+      // Hide mobile nav after selection
+      if (window.innerWidth < 768) {
+        const navContent = document.querySelector('.nav-content');
+        navContent.classList.remove('active');
+        const toggleBtn = document.querySelector('.mobile-nav-toggle');
+        toggleBtn.innerHTML = '<i class="fas fa-bars"></i> Menu';
+      }
+    }
+
+    // Mobile navigation toggle
+    function toggleMobileNav() {
+      const navContent = document.querySelector('.nav-content');
+      const toggleBtn = document.querySelector('.mobile-nav-toggle');
+      
+      if (navContent.classList.contains('active')) {
+        navContent.classList.remove('active');
+        toggleBtn.innerHTML = '<i class="fas fa-bars"></i> Menu';
+      } else {
+        navContent.classList.add('active');
+        toggleBtn.innerHTML = '<i class="fas fa-times"></i> Close';
+      }
+    }
+
+    // Generate sample data
+    function generateDates(days) {
+      const labels = [];
+      for (let i = 0; i < days; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - i));
+        const day = date.toLocaleDateString('id-ID', { weekday: 'short' });
+        labels.push(day + ' ' + date.getDate() + '/' + (date.getMonth()+1));
+      }
+      return labels;
+    }
+
+    // Generate daily stop duration chart data for 2 months
+    function generateDailyStopChart() {
+      const today = new Date();
+      const twoMonthsAgo = new Date(today);
+      twoMonthsAgo.setMonth(today.getMonth() - 2);
+      
+      const labels = [];
+      const stopDurationData = [];
+      const playbackStopData = [];
+      const backgroundColors = [];
+      
+      for (let d = new Date(twoMonthsAgo); d <= today; d.setDate(d.getDate() + 1)) {
+        const currentDate = new Date(d);
+        const dayName = currentDate.toLocaleDateString('id-ID', { weekday: 'short' });
+        const dateStr = dayName + ' ' + currentDate.getDate() + '/' + (currentDate.getMonth() + 1);
+        const isSunday = currentDate.getDay() === 0;
+        
+        labels.push(dateStr);
+        
+        if (isSunday) {
+          stopDurationData.push(0);
+          playbackStopData.push(0);
+          backgroundColors.push('#f44336');
+        } else {
+          stopDurationData.push(Math.random() * 120 + 30); // 30-150 minutes
+          playbackStopData.push(Math.random() * 20 + 5); // 5-25 playback stops
+          backgroundColors.push('#ffa500');
+        }
+      }
+      
+      return { labels, stopDurationData, playbackStopData, backgroundColors };
+    }
+
+    // Show maintenance popup
+    function showMaintenancePopup() {
+      const popup = document.createElement('div');
+      popup.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      
+      popup.innerHTML = `
+        <div style="background: linear-gradient(135deg, #112b4a 0%, #1a3a5c 100%); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          <h3 style="margin: 0 0 20px 0; color: #ffa500; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-tools"></i> Maintenance System
+          </h3>
+          <div style="background: rgba(255, 165, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #ffa500;">
+            <p style="margin: 0; color: #b0c4de;">
+              🔧 <strong>Status:</strong> Maintenance tracking system dalam development<br>
+              📊 <strong>Data:</strong> Membutuhkan file Maintenance.csv di Google Drive<br>
+              🚀 <strong>Future:</strong> Integration dengan CMMS system
+            </p>
+          </div>
+          <div style="display: flex; gap: 15px; justify-content: flex-end;">
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Close</button>
+            <button onclick="showSection('settings'); this.parentElement.parentElement.parentElement.remove();" style="background: #ffa500; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">View Requirements</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(popup);
+      
+      // Close on background click
+      popup.addEventListener('click', function(e) {
+        if (e.target === popup) {
+          document.body.removeChild(popup);
+        }
+      });
+    }
+
+    // Show real-time data popup
+    function showRealtimePopup() {
+      const popup = document.createElement('div');
+      popup.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      
+      popup.innerHTML = `
+        <div style="background: linear-gradient(135deg, #112b4a 0%, #1a3a5c 100%); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          <h3 style="margin: 0 0 20px 0; color: #2196F3; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-broadcast-tower"></i> Real-time Monitoring
+          </h3>
+          <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #2196F3;">
+            <p style="margin: 0; color: #b0c4de;">
+              📡 <strong>Status:</strong> Data belum update dari sensor robot<br>
+              📊 <strong>Required:</strong> File Real-time Sensor.csv di Google Drive<br>
+              🔧 <strong>Current:</strong> Menampilkan data simulasi untuk demo
+            </p>
+          </div>
+          <div style="display: flex; gap: 15px; justify-content: flex-end;">
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Close</button>
+            <button onclick="showSection('settings'); this.parentElement.parentElement.parentElement.remove();" style="background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">View Requirements</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(popup);
+      
+      popup.addEventListener('click', function(e) {
+        if (e.target === popup) {
+          document.body.removeChild(popup);
+        }
+      });
+    }
+
+    // Show analytics popup
+    function showAnalyticsPopup() {
+      const popup = document.createElement('div');
+      popup.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      
+      popup.innerHTML = `
+        <div style="background: linear-gradient(135deg, #112b4a 0%, #1a3a5c 100%); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          <h3 style="margin: 0 0 20px 0; color: #9C27B0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-brain"></i> AI Analytics
+          </h3>
+          <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #9C27B0;">
+            <p style="margin: 0; color: #b0c4de;">
+              🤖 <strong>Status:</strong> AI/ML analytics dalam development<br>
+              📊 <strong>Data:</strong> Menggunakan Error.csv dan Product.csv untuk training<br>
+              🚀 <strong>Future:</strong> Predictive maintenance dan optimization
+            </p>
+          </div>
+          <div style="display: flex; gap: 15px; justify-content: flex-end;">
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Close</button>
+            <button onclick="showSection('settings'); this.parentElement.parentElement.parentElement.remove();" style="background: #9C27B0; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">View Requirements</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(popup);
+      
+      popup.addEventListener('click', function(e) {
+        if (e.target === popup) {
+          document.body.removeChild(popup);
+        }
+      });
+    }
+
+    // Generate dates with day info for coloring
+    function generateDatesWithDayInfo(days) {
+      const dateInfo = [];
+      for (let i = 0; i < days; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - i));
+        const dayName = date.toLocaleDateString('id-ID', { weekday: 'long' });
+        const dayShort = date.toLocaleDateString('id-ID', { weekday: 'short' });
+        const label = dayShort + ' ' + date.getDate() + '/' + (date.getMonth()+1);
+        dateInfo.push({
+          label: label,
+          isSunday: dayName === 'Minggu',
+          date: date
+        });
+      }
+      return dateInfo;
+    }
+
+    // Update current time
+    function updateCurrentTime() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('id-ID', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: false 
+      });
+      const dateString = now.toLocaleDateString('id-ID', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      document.getElementById('currentTime').innerHTML = `
+        <div style="text-align: right;">
+          <div>${timeString}</div>
+          <div style="font-size: 12px; color: #b0c4de;">${dateString}</div>
+        </div>
+      `;
+    }
+
+    const labels = generateDates(30);
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#fff' }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#b0c4de' },
+          grid: { color: 'rgba(255,255,255,0.1)' }
+        },
+        y: {
+          ticks: { color: '#b0c4de' },
+          grid: { color: 'rgba(255,255,255,0.1)' }
+        }
+      }
+    };
+
+    // Overview Chart
+    new Chart(document.getElementById('overviewChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'OEE %',
+          data: labels.map(() => (Math.random() * 20 + 75).toFixed(1)),
+          borderColor: '#ffa500',
+          backgroundColor: 'rgba(255,165,0,0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: chartOptions
+    });
+
+    // Downtime Chart
+    new Chart(document.getElementById('downtimeChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Planned Maintenance', 'Unplanned Stops', 'Material Wait', 'Setup Time'],
+        datasets: [{
+          data: [35, 25, 20, 20],
+          backgroundColor: ['#4CAF50', '#f44336', '#ffa500', '#2196F3'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#fff' },
+            position: 'bottom'
+          }
+        }
+      }
+    });
+
+    // Stop Time Chart
+    new Chart(document.getElementById('stopTimeChart'), {
+      type: 'bar',
+      data: {
+        labels: labels.slice(-7),
+        datasets: [{
+          label: 'Stop Events',
+          data: [3, 5, 2, 7, 4, 1, 6],
+          backgroundColor: '#f44336',
+          borderRadius: 4
+        }]
+      },
+      options: chartOptions
+    });
+
+    // Error Chart - Based on Error.xlsx categories
+    new Chart(document.getElementById('errorChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Wire Feed (E001)', 'Position Sensor (E007)', 'Gas Pressure (E003)', 'Temperature (E002)', 'Others'],
+        datasets: [{
+          data: [35, 25, 20, 12, 8],
+          backgroundColor: ['#f44336', '#ffa500', '#2196F3', '#9C27B0', '#607D8B'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#fff' },
+            position: 'bottom'
+          }
+        }
+      }
+    });
+
+    // Error Trend Chart - Weekly trend from Error.xlsx
+    new Chart(document.getElementById('errorTrendChart'), {
+      type: 'line',
+      data: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Current Week'],
+        datasets: [
+          {
+            label: 'Total Errors',
+            data: [32, 28, 41, 39, 47],
+            borderColor: '#f44336',
+            backgroundColor: 'rgba(244,67,54,0.1)',
+            fill: true,
+            tension: 0.4
+          },
+          {
+            label: 'Critical Errors',
+            data: [8, 6, 11, 9, 12],
+            borderColor: '#ffa500',
+            backgroundColor: 'rgba(255,165,0,0.1)',
+            fill: true,
+            tension: 0.4
+          }
+        ]
+      },
+      options: chartOptions
+    });
+
+    // Productivity Chart
+    new Chart(document.getElementById('productivityChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Availability', 'Performance', 'Quality', 'OEE'],
+        datasets: [{
+          label: 'Current Month %',
+          data: [94.2, 89.1, 98.7, 87.3],
+          backgroundColor: ['#4CAF50', '#2196F3', '#ffa500', '#9C27B0'],
+          borderRadius: 6
+        }, {
+          label: 'Target %',
+          data: [95, 90, 99, 85],
+          backgroundColor: 'rgba(255,255,255,0.2)',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        ...chartOptions,
+        scales: {
+          ...chartOptions.scales,
+          y: {
+            ...chartOptions.scales.y,
+            max: 100
+          }
+        }
+      }
+    });
+
+    // Update metrics periodically
+    function updateMetrics() {
+      if (window.__USE_API) return; // data asli dari backend
+      const oee = (Math.random() * 10 + 80).toFixed(1);
+      const uptime = (Math.random() * 5 + 92).toFixed(1);
+      const cycles = Math.floor(Math.random() * 100 + 1200);
+      const errors = Math.floor(Math.random() * 5 + 10);
+      
+      document.getElementById('oeeValue').textContent = oee + '%';
+      document.getElementById('uptimeValue').textContent = uptime + '%';
+      document.getElementById('cycleValue').textContent = cycles.toLocaleString();
+      document.getElementById('errorValue').textContent = errors;
+    }
+
+    // Real-time data updates for monitoring section
+    function updateRealTimeData() {
+      // Temperature
+      const temp = (Math.random() * 20 + 235).toFixed(0);
+      document.getElementById('currentTemp').textContent = temp + '°C';
+      
+      // Current
+      const current = (Math.random() * 20 + 170).toFixed(0);
+      document.getElementById('currentCurrent').textContent = current + 'A';
+      
+      // Gas flow
+      const gas = (Math.random() * 3 + 13).toFixed(1);
+      document.getElementById('gasFlow').textContent = gas + ' L/min';
+      
+      // Wire speed
+      const wire = (Math.random() * 2 + 7.5).toFixed(1);
+      document.getElementById('wireSpeed').textContent = wire + ' m/min';
+      
+      // Robot position
+      document.getElementById('posX').textContent = (Math.random() * 10 + 120).toFixed(1) + 'mm';
+      document.getElementById('posY').textContent = (Math.random() * 10 - 95).toFixed(1) + 'mm';
+      document.getElementById('posZ').textContent = (Math.random() * 10 + 335).toFixed(1) + 'mm';
+      
+      // Joint angles
+      document.getElementById('joint1').textContent = (Math.random() * 10 + 40).toFixed(1) + '°';
+      document.getElementById('joint2').textContent = (Math.random() * 5 - 15).toFixed(1) + '°';
+      document.getElementById('joint3').textContent = (Math.random() * 10 + 62).toFixed(1) + '°';
+    }
+
+    // Daily OEE Chart with Sunday highlighting
+    const dailyDateInfo = generateDatesWithDayInfo(30);
+    new Chart(document.getElementById('dailyOeeChart'), {
+      type: 'bar',
+      data: {
+        labels: dailyDateInfo.map(d => d.label),
+        datasets: [{
+          label: 'Daily OEE %',
+          data: dailyDateInfo.map(() => (Math.random() * 20 + 75).toFixed(1)),
+          backgroundColor: dailyDateInfo.map(d => d.isSunday ? '#f44336' : '#ffa500'),
+          borderColor: dailyDateInfo.map(d => d.isSunday ? '#d32f2f' : '#ff8f00'),
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        ...chartOptions,
+        plugins: {
+          ...chartOptions.plugins,
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                const dateInfo = dailyDateInfo[index];
+                return dateInfo.isSunday ? `${dateInfo.label} (MINGGU)` : dateInfo.label;
+              },
+              labelColor: function(context) {
+                const index = context.dataIndex;
+                const dateInfo = dailyDateInfo[index];
+                return {
+                  borderColor: dateInfo.isSunday ? '#f44336' : '#ffa500',
+                  backgroundColor: dateInfo.isSunday ? '#f44336' : '#ffa500'
+                };
+              }
+            }
+          }
+        },
+        scales: {
+          ...chartOptions.scales,
+          x: {
+            ...chartOptions.scales.x,
+            ticks: {
+              ...chartOptions.scales.x.ticks,
+              color: function(context) {
+                const index = context.index;
+                const dateInfo = dailyDateInfo[index];
+                return dateInfo && dateInfo.isSunday ? '#f44336' : '#b0c4de';
+              },
+              font: function(context) {
+                const index = context.index;
+                const dateInfo = dailyDateInfo[index];
+                return {
+                  weight: dateInfo && dateInfo.isSunday ? 'bold' : 'normal'
+                };
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Target management functions
+    function saveTargets() {
+      const button = event.target;
+      const originalText = button.innerHTML;
+      
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      button.disabled = true;
+      
+      // Collect all target values
+      const targets = {
+        daily: {
+          production: document.getElementById('dailyProductionTarget').value,
+          oee: document.getElementById('dailyOeeTarget').value,
+          uptime: document.getElementById('dailyUptimeTarget').value,
+          quality: document.getElementById('dailyQualityTarget').value
+        },
+        weekly: {
+          production: document.getElementById('weeklyProductionTarget').value,
+          downtime: document.getElementById('weeklyDowntimeTarget').value,
+          errors: document.getElementById('weeklyErrorTarget').value,
+          cycleTime: document.getElementById('weeklyCycleTimeTarget').value
+        },
+        monthly: {
+          production: document.getElementById('monthlyProductionTarget').value,
+          oee: document.getElementById('monthlyOeeTarget').value,
+          fpy: document.getElementById('monthlyFpyTarget').value,
+          maintenanceCost: document.getElementById('monthlyMaintenanceCostTarget').value
+        }
+      };
+      
+      setTimeout(() => {
+        button.innerHTML = '<i class="fas fa-check"></i> Targets Saved!';
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.disabled = false;
+          showNotification('Production targets saved successfully!', 'success');
+          console.log('Saved targets:', targets);
+        }, 2000);
+      }, 1500);
+    }
+
+    function resetTargets() {
+      if (confirm('Are you sure you want to reset all targets to default values?')) {
+        // Reset to default values
+        document.getElementById('dailyProductionTarget').value = 180;
+        document.getElementById('dailyOeeTarget').value = 85;
+        document.getElementById('dailyUptimeTarget').value = 95;
+        document.getElementById('dailyQualityTarget').value = 99;
+        
+        document.getElementById('weeklyProductionTarget').value = 1260;
+        document.getElementById('weeklyDowntimeTarget').value = 8;
+        document.getElementById('weeklyErrorTarget').value = 15;
+        document.getElementById('weeklyCycleTimeTarget').value = 1.2;
+        
+        document.getElementById('monthlyProductionTarget').value = 5400;
+        document.getElementById('monthlyOeeTarget').value = 87;
+        document.getElementById('monthlyFpyTarget').value = 98.5;
+        document.getElementById('monthlyMaintenanceCostTarget').value = 25000000;
+        
+        showNotification('Targets reset to default values', 'info');
+      }
+    }
+
+    // Date filter functions
+    function applyDateFilter() {
+      const startDate = document.getElementById('startDateFilter').value;
+      const endDate = document.getElementById('endDateFilter').value;
+      
+      if (!startDate || !endDate) {
+        showNotification('Please select both start and end dates', 'error');
+        return;
+      }
+      
+      if (new Date(startDate) > new Date(endDate)) {
+        showNotification('Start date cannot be later than end date', 'error');
+        return;
+      }
+      
+      // Simulate data filtering
+      const button = event.target;
+      const originalText = button.innerHTML;
+      
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      button.disabled = true;
+      
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        showNotification(`Data filtered from ${startDate} to ${endDate}`, 'success');
+        
+        // Here you would normally filter the actual data
+        console.log('Filtering data from', startDate, 'to', endDate);
+      }, 1000);
+    }
+
+    // Add countermeasure function
+    function addCountermeasure() {
+      const button = event.target;
+      const originalText = button.innerHTML;
+      
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+      button.disabled = true;
+      
+      setTimeout(() => {
+        button.innerHTML = '<i class="fas fa-check"></i> Added Successfully!';
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.disabled = false;
+          // Clear form
+          document.querySelectorAll('textarea').forEach(textarea => textarea.value = '');
+          document.querySelectorAll('input[type="date"], input[type="number"]').forEach(input => input.value = '');
+          showNotification('Countermeasure added successfully!', 'success');
+        }, 2000);
+      }, 1500);
+    }
+
+    // Create additional charts
+    function createAdvancedCharts() {
+      // Temperature Chart
+      new Chart(document.getElementById('tempChart'), {
+        type: 'line',
+        data: {
+          labels: Array.from({length: 20}, (_, i) => `${i}s`),
+          datasets: [{
+            label: 'Temperature (°C)',
+            data: Array.from({length: 20}, () => Math.random() * 20 + 235),
+            borderColor: '#f44336',
+            backgroundColor: 'rgba(244,67,54,0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            ...chartOptions.scales,
+            y: { ...chartOptions.scales.y, min: 220, max: 270 }
+          }
+        }
+      });
+
+      // Electrical Chart
+      new Chart(document.getElementById('electricalChart'), {
+        type: 'line',
+        data: {
+          labels: Array.from({length: 20}, (_, i) => `${i}s`),
+          datasets: [
+            {
+              label: 'Current (A)',
+              data: Array.from({length: 20}, () => Math.random() * 20 + 170),
+              borderColor: '#ffa500',
+              backgroundColor: 'rgba(255,165,0,0.1)',
+              yAxisID: 'y'
+            },
+            {
+              label: 'Voltage (V)',
+              data: Array.from({length: 20}, () => Math.random() * 5 + 22),
+              borderColor: '#2196F3',
+              backgroundColor: 'rgba(33,150,243,0.1)',
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            x: chartOptions.scales.x,
+            y: { ...chartOptions.scales.y, position: 'left' },
+            y1: { ...chartOptions.scales.y, position: 'right', grid: { drawOnChartArea: false } }
+          }
+        }
+      });
+
+      // Prediction Chart
+      new Chart(document.getElementById('predictionChart'), {
+        type: 'line',
+        data: {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+          datasets: [{
+            label: 'Failure Risk %',
+            data: [5, 8, 12, 18, 25, 35],
+            borderColor: '#f44336',
+            backgroundColor: 'rgba(244,67,54,0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            ...chartOptions.scales,
+            y: { ...chartOptions.scales.y, max: 40 }
+          }
+        }
+      });
+
+      // Quality Chart
+      new Chart(document.getElementById('qualityChart'), {
+        type: 'line',
+        data: {
+          labels: labels.slice(-14),
+          datasets: [
+            {
+              label: 'First Pass Yield %',
+              data: Array.from({length: 14}, () => (Math.random() * 3 + 97).toFixed(1)),
+              borderColor: '#4CAF50',
+              backgroundColor: 'rgba(76,175,80,0.1)',
+              fill: true
+            },
+            {
+              label: 'Quality Score %',
+              data: Array.from({length: 14}, () => (Math.random() * 2 + 98).toFixed(1)),
+              borderColor: '#2196F3',
+              backgroundColor: 'rgba(33,150,243,0.1)',
+              fill: true
+            }
+          ]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            ...chartOptions.scales,
+            y: { ...chartOptions.scales.y, min: 95, max: 100 }
+          }
+        }
+      });
+
+      // Defect Chart
+      new Chart(document.getElementById('defectChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Porosity', 'Incomplete Fusion', 'Spatter', 'Undercut', 'Others'],
+          datasets: [{
+            data: [35, 25, 20, 15, 5],
+            backgroundColor: ['#f44336', '#ffa500', '#2196F3', '#9C27B0', '#607D8B'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#fff' },
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Maintenance Cost Chart
+      new Chart(document.getElementById('maintenanceCostChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+          datasets: [
+            {
+              label: 'Preventive',
+              data: [2500, 2200, 2800, 2400, 2600, 2300, 2700, 2500],
+              backgroundColor: '#4CAF50'
+            },
+            {
+              label: 'Corrective',
+              data: [1200, 1800, 900, 1500, 1100, 1600, 1300, 1000],
+              backgroundColor: '#f44336'
+            }
+          ]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            ...chartOptions.scales,
+            x: { ...chartOptions.scales.x, stacked: true },
+            y: { ...chartOptions.scales.y, stacked: true }
+          }
+        }
+      });
+
+      // Downtime Trend Chart
+      new Chart(document.getElementById('downtimeTrendChart'), {
+        type: 'line',
+        data: {
+          labels: labels.slice(-7),
+          datasets: [{
+            label: 'Daily Downtime (hours)',
+            data: [2.1, 3.2, 1.8, 2.7, 2.3, 1.9, 2.5],
+            borderColor: '#f44336',
+            backgroundColor: 'rgba(244,67,54,0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: chartOptions
+      });
+
+      // Stop Duration Chart
+      new Chart(document.getElementById('stopDurationChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['< 2 min', '2-5 min', '5-10 min', '> 10 min'],
+          datasets: [{
+            data: [45, 30, 15, 10],
+            backgroundColor: ['#4CAF50', '#ffa500', '#f44336', '#9C27B0'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#fff' },
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Hourly Stop Chart
+      new Chart(document.getElementById('hourlyStopChart'), {
+        type: 'bar',
+        data: {
+          labels: ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
+          datasets: [{
+            label: 'Stop Events per Hour',
+            data: [1, 3, 2, 4, 2, 3, 1, 2, 4, 3, 2, 1],
+            backgroundColor: '#ffa500',
+            borderRadius: 4
+          }]
+        },
+        options: chartOptions
+      });
+
+      // Cycle Time Chart
+      new Chart(document.getElementById('cycleTimeChart'), {
+        type: 'line',
+        data: {
+          labels: labels.slice(-14),
+          datasets: [{
+            label: 'Avg Cycle Time (min)',
+            data: Array.from({length: 14}, () => (Math.random() * 0.2 + 1.1).toFixed(2)),
+            borderColor: '#2196F3',
+            backgroundColor: 'rgba(33,150,243,0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            ...chartOptions.scales,
+            y: { ...chartOptions.scales.y, min: 1.0, max: 1.4 }
+          }
+        }
+      });
+
+      // Target vs Actual Chart
+      new Chart(document.getElementById('targetVsActualChart'), {
+        type: 'bar',
+        data: {
+          labels: labels.slice(-7),
+          datasets: [
+            {
+              label: 'Target Production',
+              data: [1200, 1200, 1200, 1200, 1200, 1200, 1200],
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              borderRadius: 4
+            },
+            {
+              label: 'Actual Production',
+              data: [1180, 1247, 1156, 1289, 1203, 1167, 1234],
+              backgroundColor: '#4CAF50',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: chartOptions
+      });
+
+      // Hourly Production Chart
+      new Chart(document.getElementById('hourlyProductionChart'), {
+        type: 'line',
+        data: {
+          labels: ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
+          datasets: [{
+            label: 'Parts per Hour',
+            data: [45, 52, 48, 55, 51, 49, 47, 53, 56, 52, 48, 44],
+            borderColor: '#ffa500',
+            backgroundColor: 'rgba(255,165,0,0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: chartOptions
+      });
+
+      // Countermeasure Category Chart
+      new Chart(document.getElementById('countermeasureCategoryChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Equipment', 'Process', 'Training', 'Quality', 'Safety'],
+          datasets: [{
+            data: [35, 25, 20, 15, 5],
+            backgroundColor: ['#f44336', '#ffa500', '#4CAF50', '#2196F3', '#9C27B0'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#fff' },
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Implementation Timeline Chart
+      new Chart(document.getElementById('implementationTimelineChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          datasets: [
+            {
+              label: 'Planned',
+              data: [4, 3, 2, 1, 2],
+              backgroundColor: '#ffa500'
+            },
+            {
+              label: 'Completed',
+              data: [2, 1, 0, 0, 0],
+              backgroundColor: '#4CAF50'
+            }
+          ]
+        },
+        options: chartOptions
+      });
+
+      // Target Achievement Chart
+      new Chart(document.getElementById('targetAchievementChart'), {
+        type: 'line',
+        data: {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Current Week'],
+          datasets: [
+            {
+              label: 'Production Target Achievement %',
+              data: [95.2, 102.1, 98.7, 104.3, 98.9],
+              borderColor: '#4CAF50',
+              backgroundColor: 'rgba(76,175,80,0.1)',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'OEE Target Achievement %',
+              data: [92.8, 98.5, 101.2, 99.8, 100.3],
+              borderColor: '#2196F3',
+              backgroundColor: 'rgba(33,150,243,0.1)',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'Quality Target Achievement %',
+              data: [99.1, 97.8, 98.9, 96.5, 97.2],
+              borderColor: '#ffa500',
+              backgroundColor: 'rgba(255,165,0,0.1)',
+              fill: true,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          ...chartOptions,
+          scales: {
+            ...chartOptions.scales,
+            y: {
+              ...chartOptions.scales.y,
+              min: 90,
+              max: 110
+            }
+          }
+        }
+      });
+
+      // Monthly Target Chart
+      new Chart(document.getElementById('monthlyTargetChart'), {
+        type: 'radar',
+        data: {
+          labels: ['Production Volume', 'OEE', 'Quality Rate', 'Uptime', 'Cycle Time', 'Error Control'],
+          datasets: [
+            {
+              label: 'Target',
+              data: [100, 100, 100, 100, 100, 100],
+              borderColor: 'rgba(255,255,255,0.5)',
+              backgroundColor: 'rgba(255,255,255,0.1)',
+              pointBackgroundColor: 'rgba(255,255,255,0.5)'
+            },
+            {
+              label: 'Actual',
+              data: [98.9, 100.3, 97.2, 99.1, 104.2, 31.9],
+              borderColor: '#ffa500',
+              backgroundColor: 'rgba(255,165,0,0.2)',
+              pointBackgroundColor: '#ffa500'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#fff' }
+            }
+          },
+          scales: {
+            r: {
+              angleLines: { color: 'rgba(255,255,255,0.1)' },
+              grid: { color: 'rgba(255,255,255,0.1)' },
+              pointLabels: { color: '#b0c4de' },
+              ticks: { 
+                color: '#b0c4de',
+                backdropColor: 'transparent'
+              },
+              min: 0,
+              max: 120
+            }
+          }
+        }
+      });
+    }
+
+    // Report generation function
+    function generateReport() {
+      const reportType = document.getElementById('reportType').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const format = document.getElementById('reportFormat').value;
+      
+      // Simulate report generation
+      const button = event.target;
+      const originalText = button.innerHTML;
+      
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+      button.disabled = true;
+      
+      setTimeout(() => {
+        button.innerHTML = '<i class="fas fa-check"></i> Report Generated!';
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.disabled = false;
+          alert(`Report "${reportType}" has been generated successfully!\nDate Range: ${startDate} to ${endDate}\nFormat: ${format}`);
+        }, 2000);
+      }, 3000);
+    }
+
+    // Settings save function
+    function saveSettings() {
+      const button = event.target;
+      const originalText = button.innerHTML;
+      
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      button.disabled = true;
+      
+      setTimeout(() => {
+        button.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.disabled = false;
+        }, 2000);
+      }, 1500);
+    }
+
+    // Initialize advanced features
+    setTimeout(() => {
+      createAdvancedCharts();
+      createMonthlyStopTimeChart();
+      createDailyStopDurationChart();
+    }, 1000);
+
+    // Create monthly stop time chart for boss target
+    function createMonthlyStopTimeChart() {
+      new Chart(document.getElementById('monthlyStopTimeChart'), {
+        type: 'line',
+        data: {
+          labels: ['Jan 2025', 'Feb 2025', 'Mar 2025', 'Apr 2025', 'May 2025', 'Jun 2025', 'Jul 2025', 'Aug 2025'],
+          datasets: [
+            {
+              label: 'Actual Stop Time %',
+              data: [8.9, 8.5, 8.1, 7.8, 7.6, 7.5, 7.4, 6.8],
+              borderColor: '#f44336',
+              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: '#f44336',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 6
+            },
+            {
+              label: 'Target Boss (15% reduction per month)',
+              data: [8.9, 7.6, 6.5, 5.5, 4.7, 4.0, 3.4, 2.9],
+              borderColor: '#2196F3',
+              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              fill: false,
+              tension: 0.4,
+              borderDash: [5, 5],
+              pointBackgroundColor: '#2196F3',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4
+            },
+            {
+              label: 'Linear Improvement Target',
+              data: [8.9, 8.2, 7.5, 6.8, 6.1, 5.4, 4.7, 4.0],
+              borderColor: '#4CAF50',
+              backgroundColor: 'rgba(76, 175, 80, 0.1)',
+              fill: false,
+              tension: 0.4,
+              borderDash: [10, 5],
+              pointBackgroundColor: '#4CAF50',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#fff' },
+              position: 'top'
+            },
+            tooltip: {
+              callbacks: {
+                afterLabel: function(context) {
+                  if (context.datasetIndex === 0) {
+                    const currentValue = context.parsed.y;
+                    const previousValue = context.dataset.data[context.dataIndex - 1];
+                    if (previousValue) {
+                      const reduction = ((previousValue - currentValue) / previousValue * 100).toFixed(1);
+                      return `Reduction: ${reduction}% vs previous month`;
+                    }
+                  }
+                  return '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#b0c4de' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              ticks: { 
+                color: '#b0c4de',
+                callback: function(value) {
+                  return value + '%';
+                }
+              },
+              grid: { color: 'rgba(255,255,255,0.1)' },
+              title: {
+                display: true,
+                text: 'Stop Time Percentage (%)',
+                color: '#b0c4de'
+              },
+              min: 0,
+              max: 10
+            }
+          }
+        }
+      });
+    }
+
+    // Create daily stop duration chart
+    function createDailyStopDurationChart() {
+      const chartData = generateDailyStopChart();
+      
+      new Chart(document.getElementById('dailyStopDurationChart'), {
+        type: 'bar',
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: 'Stop Duration (minutes)',
+              data: chartData.stopDurationData,
+              backgroundColor: chartData.backgroundColors.map(color => color + '80'), // Add transparency
+              borderColor: chartData.backgroundColors,
+              borderWidth: 1,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Playback Stops',
+              data: chartData.playbackStopData,
+              type: 'line',
+              borderColor: '#2196F3',
+              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              fill: false,
+              tension: 0.4,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#fff' }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(context) {
+                  const index = context[0].dataIndex;
+                  const label = chartData.labels[index];
+                  const isSunday = chartData.backgroundColors[index] === '#f44336';
+                  return isSunday ? `${label} (MINGGU)` : label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { 
+                color: function(context) {
+                  const index = context.index;
+                  return chartData.backgroundColors[index] === '#f44336' ? '#f44336' : '#b0c4de';
+                },
+                font: function(context) {
+                  const index = context.index;
+                  return {
+                    weight: chartData.backgroundColors[index] === '#f44336' ? 'bold' : 'normal'
+                  };
+                }
+              },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              ticks: { color: '#b0c4de' },
+              grid: { color: 'rgba(255,255,255,0.1)' },
+              title: {
+                display: true,
+                text: 'Stop Duration (minutes)',
+                color: '#b0c4de'
+              }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              ticks: { color: '#b0c4de' },
+              grid: { drawOnChartArea: false },
+              title: {
+                display: true,
+                text: 'Playback Stops',
+                color: '#b0c4de'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Update current time immediately and every second
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
+
+    // Update real-time data every 5 seconds
+    setInterval(updateRealTimeData, 5000);
+
+    // Update metrics every 30 seconds
+    setInterval(updateMetrics, 30000);
+
+    // Initialize date filter with default values
+    document.addEventListener('DOMContentLoaded', function() {
+      const today = new Date();
+      const oneMonthAgo = new Date(today);
+      oneMonthAgo.setMonth(today.getMonth() - 1);
+      
+      document.getElementById('startDateFilter').value = oneMonthAgo.toISOString().split('T')[0];
+      document.getElementById('endDateFilter').value = today.toISOString().split('T')[0];
+      
+      // Add event listener for date filter apply button
+      document.getElementById('applyDateFilter').addEventListener('click', applyDateFilter);
+    });
+
+    // Add event listeners for settings
+    document.addEventListener('DOMContentLoaded', function() {
+      // Save settings button
+      const saveBtn = document.querySelector('.save-btn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', saveSettings);
+      }
+
+      // Reset settings button
+      const resetBtn = document.querySelector('.reset-btn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+          if (confirm('Are you sure you want to reset all settings to default?')) {
+            // Reset form values
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+              input.value = input.getAttribute('value');
+            });
+            document.querySelectorAll('select').forEach(select => {
+              select.selectedIndex = 0;
+            });
+            alert('Settings have been reset to default values.');
+          }
+        });
+      }
+
+      // Download buttons
+      document.querySelectorAll('.download-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const reportName = this.parentElement.querySelector('h4').textContent;
+          alert(`Downloading: ${reportName}`);
+        });
+      });
+    });
+
+    // Dropdown change handlers
+
+    document.getElementById('robotSelect').addEventListener('change', function() {
+      console.log('Robot changed to:', this.value);
+      // Simulate data refresh
+      updateMetrics();
+      updateRealTimeData();
+    });
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case '1':
+            e.preventDefault();
+            showSection('overview');
+            break;
+          case '2':
+            e.preventDefault();
+            showSection('realtime');
+            break;
+          case '3':
+            e.preventDefault();
+            showSection('analytics');
+            break;
+          case 'r':
+            e.preventDefault();
+            if (confirm('Refresh all data?')) {
+              location.reload();
+            }
+            break;
+        }
+      }
+    });
+
+    // Add notification system
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${type === 'error' ? '#f44336' : type === 'success' ? '#4CAF50' : '#2196F3'};
+        color: white;
+        border-radius: 6px;
+        z-index: 10000;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+      `;
+      notification.textContent = message;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 300);
+      }, 3000);
+    }
+
+    // Add CSS for notifications
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Simulate random alerts
+    setInterval(() => {
+      const alerts = [
+        { message: 'System operating normally', type: 'success' },
+        { message: 'Temperature within optimal range', type: 'info' },
+        { message: 'Maintenance reminder: Wire feeder cleaning due', type: 'warning' }
+      ];
+      
+      if (Math.random() < 0.1) { // 10% chance every interval
+        const alert = alerts[Math.floor(Math.random() * alerts.length)];
+        showNotification(alert.message, alert.type);
+      }
+    }, 45000);
+
+    console.log('🤖 ARM WELDING ROBOT DASHBOARD - Live Google Sheets Integration');
+    console.log('📊 Live Data Sources:');
+    console.log('   - Program Robot: https://docs.google.com/spreadsheets/d/1xzgCxwA5MZPPiTc5WolC2a_9-Ia0m-spmYnk5Dhu4p8');
+    console.log('   - Product Data: https://docs.google.com/spreadsheets/d/1XCmO6G0e__gj4LZolBEP7TTRhDBOqngarM3JbpAvmeI');
+    console.log('   - Error Categories: https://docs.google.com/spreadsheets/d/1dwkCUr5be80ZwAlfHqKfu6cmxDJgPeBCyEMNejwxr64');
+    console.log('   - Error Logs: https://docs.google.com/spreadsheets/d/1DyD_a36221Gn8C4jvD2ICcgBFRnVuIUq-HjaSZhrvp0');
+    console.log('🔧 Demo Data: Real-time monitoring, AI analytics, maintenance (under development)');
+    console.log('⌨️ Keyboard shortcuts: Ctrl+1 (Overview), Ctrl+2 (Real-time), Ctrl+3 (Analytics), Ctrl+R (Refresh)');
+    
+    // Show initial data integration status
+    setTimeout(() => {
+      showNotification('📊 Dashboard loaded with live Google Sheets integration', 'success');
+    }, 2000);
+  </script>
+<script src="dashboard-api.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'982e1e07b09cc26b',t:'MTc1ODUwNTQ2OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
